@@ -11,5 +11,4 @@ public class RegisterStudentRequest {
 
     @NotNull(message = "ID Lớp học không được để trống")
     private Long courseId;
-    private String hehe;
 }
