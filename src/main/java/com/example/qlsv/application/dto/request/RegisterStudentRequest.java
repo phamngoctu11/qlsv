@@ -8,7 +8,6 @@ public class RegisterStudentRequest {
 
     @NotNull(message = "ID Sinh viên không được để trống")
     private Long studentId;
-
     @NotNull(message = "ID Lớp học không được để trống")
     private Long courseId;
 }

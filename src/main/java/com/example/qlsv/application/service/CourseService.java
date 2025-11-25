@@ -3,6 +3,8 @@ package com.example.qlsv.application.service;
 import com.example.qlsv.application.dto.request.CreateCourseRequest;
 import com.example.qlsv.application.dto.response.CourseResponse;
 import com.example.qlsv.application.dto.response.SimpleStudentResponse;
+import com.example.qlsv.application.dto.response.StudentAttendanceStat; // <-- MỚI
+
 import java.util.List;
 
 public interface CourseService {
@@ -17,4 +19,7 @@ public interface CourseService {
     void registerStudent(Long studentId, Long courseId);
     List<SimpleStudentResponse> getStudentsByCourse(Long courseId);
     List<CourseResponse> getCoursesByLecturer(Long lecturerId);
+
+    // --- [MỚI] THỐNG KÊ ---
+    List<StudentAttendanceStat> getCourseStatistics(Long courseId);
 }

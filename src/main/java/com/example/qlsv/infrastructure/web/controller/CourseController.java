@@ -3,7 +3,8 @@ package com.example.qlsv.infrastructure.web.controller;
 import com.example.qlsv.application.dto.request.CreateCourseRequest;
 import com.example.qlsv.application.dto.request.RegisterStudentRequest;
 import com.example.qlsv.application.dto.response.CourseResponse;
-import com.example.qlsv.application.dto.response.SimpleStudentResponse; // Đổi từ UserResponse
+import com.example.qlsv.application.dto.response.SimpleStudentResponse;
+import com.example.qlsv.application.dto.response.StudentAttendanceStat; // <-- MỚI
 import com.example.qlsv.application.service.CourseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -49,12 +50,9 @@ public class CourseController {
         return ResponseEntity.noContent().build();
     }
 
-    // --- Các nghiệp vụ chuyên sâu ---
-
     @PostMapping("/register-student")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> registerStudentToCourse(@Valid @RequestBody RegisterStudentRequest request) {
-        // Gọi service với 2 ID tách biệt
         courseService.registerStudent(request.getStudentId(), request.getCourseId());
         return ResponseEntity.ok().build();
     }
@@ -69,9 +67,15 @@ public class CourseController {
     @GetMapping("/by-lecturer/{lecturerId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
     public ResponseEntity<List<CourseResponse>> getCoursesByLecturer(@PathVariable Long lecturerId) {
-        // (Trong dự án thật, Giảng viên chỉ nên xem được của chính họ
-        // bằng cách lấy ID từ Principal, thay vì PathVariable)
         List<CourseResponse> courses = courseService.getCoursesByLecturer(lecturerId);
         return ResponseEntity.ok(courses);
+    }
+
+    // --- [MỚI] ENDPOINT THỐNG KÊ ---
+    @GetMapping("/{id}/statistics")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    public ResponseEntity<List<StudentAttendanceStat>> getCourseStats(@PathVariable Long id) {
+        List<StudentAttendanceStat> stats = courseService.getCourseStatistics(id);
+        return ResponseEntity.ok(stats);
     }
 }

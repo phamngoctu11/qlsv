@@ -1,4 +1,15 @@
 spring:
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: tux2k4@gmail.com  # <-- Thay email của bạn
+    password: dftv pbug kayz wbfz     # <-- Thay mật khẩu ứng dụng
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
   application:
     name: qlsv
   jpa:
