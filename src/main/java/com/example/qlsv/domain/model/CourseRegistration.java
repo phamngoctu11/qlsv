@@ -15,17 +15,17 @@ public class CourseRegistration {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Mối quan hệ với Sinh viên
+    // --- THAY ĐỔI Ở ĐÂY ---
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "student_id", nullable = false)
+    @JoinColumn(name = "student_code", nullable = false)
     private Student student;
+    // ---------------------
 
-    // Mối quan hệ với Lớp học phần
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
-    private LocalDateTime registrationDate; // Ngày đăng ký
+    private LocalDateTime registrationDate;
 
     public CourseRegistration(Student student, Course course) {
         this.student = student;

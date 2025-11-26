@@ -12,6 +12,7 @@ import com.example.qlsv.domain.exception.ResourceNotFoundException;
 import com.example.qlsv.domain.model.*;
 import com.example.qlsv.domain.model.enums.AttendanceStatus;
 import com.example.qlsv.domain.repository.*;
+import com.example.qlsv.infrastructure.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,31 +34,28 @@ public class CourseServiceImpl implements CourseService {
     private final LecturerRepository lecturerRepository;
     private final StudentRepository studentRepository;
     private final CourseRegistrationRepository registrationRepository;
-    private final AttendanceRecordRepository recordRepository; // Dùng để thống kê
-
+    private final AttendanceRecordRepository recordRepository;
+    private final EmailService emailService;
     private final CourseMapper courseMapper;
     private final UserMapper userMapper;
 
     @Override
     @Transactional
     public CourseResponse createCourse(CreateCourseRequest request) {
-        // 1. Kiểm tra trùng mã lớp
         courseRepository.findByCourseCode(request.getCourseCode())
-                .ifPresent(c -> {
-                    throw new BusinessException("Mã lớp học phần đã tồn tại: " + c.getCourseCode());
-                });
+                .ifPresent(c -> { throw new BusinessException("Mã lớp tồn tại"); });
 
-        // 2. Tìm các bảng liên quan
         Subject subject = subjectRepository.findById(request.getSubjectId())
                 .orElseThrow(() -> new ResourceNotFoundException("Subject", "id", request.getSubjectId()));
 
-        Lecturer lecturer = lecturerRepository.findById(request.getLecturerId())
-                .orElseThrow(() -> new ResourceNotFoundException("Lecturer", "id", request.getLecturerId()));
+        // --- TÌM GIẢNG VIÊN BẰNG CODE (STRING) ---
+        Lecturer lecturer = lecturerRepository.findById(request.getLecturerCode())
+                .orElseThrow(() -> new ResourceNotFoundException("Lecturer", "code", request.getLecturerCode()));
 
         Semester semester = semesterRepository.findById(request.getSemesterId())
                 .orElseThrow(() -> new ResourceNotFoundException("Semester", "id", request.getSemesterId()));
 
-        // 3. Xử lý Lịch học (Fix lỗi NULL)
+        // Xử lý thời gian (giữ nguyên)
         DayOfWeek dayOfWeek;
         LocalTime startTime;
         LocalTime endTime;
@@ -66,62 +63,30 @@ public class CourseServiceImpl implements CourseService {
             dayOfWeek = DayOfWeek.valueOf(request.getDayOfWeek().toUpperCase());
             startTime = LocalTime.parse(request.getStartTime());
             endTime = LocalTime.parse(request.getEndTime());
-        } catch (IllegalArgumentException | DateTimeParseException e) {
-            throw new BusinessException("Lịch học không hợp lệ. Kiểm tra lại Ngày (VD: MONDAY) hoặc Giờ (VD: 09:00:00)");
-        }
+        } catch (Exception e) { throw new BusinessException("Lịch học lỗi"); }
 
-        // 4. Tạo Entity
         Course newCourse = new Course();
         newCourse.setCourseCode(request.getCourseCode());
         newCourse.setSubject(subject);
-        newCourse.setLecturer(lecturer);
+        newCourse.setLecturer(lecturer); // Gán quan hệ
         newCourse.setSemester(semester);
         newCourse.setDayOfWeek(dayOfWeek);
         newCourse.setStartTime(startTime);
         newCourse.setEndTime(endTime);
 
-        // 5. Lưu
-        Course savedCourse = courseRepository.save(newCourse);
-
-        return courseMapper.toResponse(savedCourse);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public CourseResponse getCourseById(Long id) {
-        Course course = courseRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", id));
-        return courseMapper.toResponse(course);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<CourseResponse> getAllCourses() {
-        return courseRepository.findAll().stream()
-                .map(courseMapper::toResponse)
-                .collect(Collectors.toList());
+        return courseMapper.toResponse(courseRepository.save(newCourse));
     }
 
     @Override
     @Transactional
-    public void deleteCourse(Long id) {
-        if (!courseRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Course", "id", id);
+    public void registerStudent(String studentCode, Long courseId) { // <-- INPUT LÀ CODE
+        // --- CHECK BẰNG CODE ---
+        if (registrationRepository.existsByStudentStudentCodeAndCourseId(studentCode, courseId)) {
+            throw new BusinessException("Đã đăng ký rồi");
         }
-        if (registrationRepository.existsByCourseId(id)) {
-            throw new BusinessException("Không thể xóa Lớp học phần đã có sinh viên đăng ký.");
-        }
-        courseRepository.deleteById(id);
-    }
+        Student student = studentRepository.findById(studentCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "code", studentCode));
 
-    @Override
-    @Transactional
-    public void registerStudent(Long studentId, Long courseId) {
-        if (registrationRepository.existsByStudentIdAndCourseId(studentId, courseId)) {
-            throw new BusinessException("Sinh viên đã đăng ký lớp học này.");
-        }
-        Student student = studentRepository.findById(studentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
 
@@ -129,12 +94,33 @@ public class CourseServiceImpl implements CourseService {
         registrationRepository.save(registration);
     }
 
+    // ... (Các hàm getCourseById, deleteCourse, getStudentsByCourse giữ nguyên logic, chỉ lưu ý kiểu dữ liệu)
+
+    @Override
+    @Transactional(readOnly = true)
+    public CourseResponse getCourseById(Long id) {
+        Course course = courseRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Course", "id", id));
+        return courseMapper.toResponse(course);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CourseResponse> getAllCourses() {
+        return courseRepository.findAll().stream().map(courseMapper::toResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void deleteCourse(Long id) {
+        if (!courseRepository.existsById(id)) throw new ResourceNotFoundException("Course", "id", id);
+        if (registrationRepository.existsByCourseId(id)) throw new BusinessException("Có sinh viên, không xóa được");
+        courseRepository.deleteById(id);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<SimpleStudentResponse> getStudentsByCourse(Long courseId) {
-        if (!courseRepository.existsById(courseId)) {
-            throw new ResourceNotFoundException("Course", "id", courseId);
-        }
+        if (!courseRepository.existsById(courseId)) throw new ResourceNotFoundException("Course", "id", courseId);
         return courseRepository.findStudentsByCourseId(courseId).stream()
                 .map(userMapper::studentToSimpleStudentResponse)
                 .collect(Collectors.toList());
@@ -143,81 +129,79 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional(readOnly = true)
     public List<CourseResponse> getCoursesByLecturer(Long lecturerId) {
-        if (!lecturerRepository.existsById(lecturerId)) {
-            throw new ResourceNotFoundException("Lecturer", "id", lecturerId);
-        }
-        return courseRepository.findByLecturerId(lecturerId).stream()
-                .map(courseMapper::toResponse)
-                .collect(Collectors.toList());
+        // Lưu ý: Hàm này trong Interface cũ dùng Long lecturerId (User ID),
+        // nếu bạn muốn tìm theo User ID thì phải tìm Lecturer trước
+        // Ở đây tôi giả sử input là USER ID (từ token)
+        Lecturer lecturer = lecturerRepository.findByUserId(lecturerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Lecturer", "userId", lecturerId));
+
+        return courseRepository.findByLecturerLecturerCode(lecturer.getLecturerCode()).stream()
+                .map(courseMapper::toResponse).collect(Collectors.toList());
     }
 
-    // --- LOGIC THỐNG KÊ ---
     @Override
     @Transactional(readOnly = true)
     public List<StudentAttendanceStat> getCourseStatistics(Long courseId) {
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
-
-        // 1. Tính tổng số buổi học dự kiến
-        int totalSessions = calculateTotalSessions(
-                course.getSemester().getStartDate(),
-                course.getSemester().getEndDate(),
-                course.getDayOfWeek()
-        );
+        // (Logic thống kê giữ nguyên, JPA tự xử lý quan hệ)
+        // ... Copy y nguyên hàm thống kê từ câu trả lời trước ...
+        Course course = courseRepository.findById(courseId).orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+        int totalSessions = calculateTotalSessions(course.getSemester().getStartDate(), course.getSemester().getEndDate(), course.getDayOfWeek());
         if (totalSessions == 0) totalSessions = 1;
-
-        // 2. Tính số buổi đã trôi qua (tính đến hôm nay)
-        int passedSessions = calculateTotalSessions(
-                course.getSemester().getStartDate(),
-                LocalDate.now(),
-                course.getDayOfWeek()
-        );
+        int passedSessions = calculateTotalSessions(course.getSemester().getStartDate(), LocalDate.now(), course.getDayOfWeek());
         if (passedSessions > totalSessions) passedSessions = totalSessions;
 
-        // 3. Lấy dữ liệu
         List<Student> students = courseRepository.findStudentsByCourseId(courseId);
-        List<AttendanceRecord> allRecords = recordRepository.findAll();
+        List<AttendanceRecord> allRecords = recordRepository.findAll(); // Nên tối ưu
 
-        int finalTotalSessions = totalSessions;
-        int finalPassedSessions = passedSessions;
+        int finalTotal = totalSessions;
+        int finalPassed = passedSessions;
 
         return students.stream().map(student -> {
-            // Đếm số lần đi học (Có mặt hoặc Trễ)
-            long attendedCount = allRecords.stream()
-                    .filter(r -> r.getSession().getCourse().getId().equals(courseId)
-                            && r.getStudent().getId().equals(student.getId())
-                            && (r.getStatus() == AttendanceStatus.PRESENT || r.getStatus() == AttendanceStatus.LATE))
-                    .count();
+            long attended = allRecords.stream().filter(r ->
+                    r.getSession().getCourse().getId().equals(courseId) &&
+                            r.getStudent().getStudentCode().equals(student.getStudentCode()) && // So sánh Code
+                            (r.getStatus() == AttendanceStatus.PRESENT || r.getStatus() == AttendanceStatus.LATE)
+            ).count();
 
-            // Tính số buổi vắng thực tế (Dựa trên số buổi đã trôi qua)
-            int realAbsentCount = finalPassedSessions - (int) attendedCount;
-            if (realAbsentCount < 0) realAbsentCount = 0;
-
-            // Tính % vắng (Dựa trên tổng số buổi cả kỳ)
-            double absentPercentage = ((double) realAbsentCount / finalTotalSessions) * 100;
-            boolean isBanned = absentPercentage > 30.0;
+            int absent = finalPassed - (int) attended;
+            if (absent < 0) absent = 0;
+            double pct = ((double) absent / finalTotal) * 100;
 
             return StudentAttendanceStat.builder()
-                    .studentId(student.getId())
-                    .studentName(student.getLastName() + " " + student.getFirstName())
+                    .studentId(student.getUser().getId()) // Trả về UserID để tiện tracking
                     .studentCode(student.getStudentCode())
-                    .totalSessions(finalTotalSessions)
-                    .attendedSessions((int) attendedCount)
-                    .absentSessions(realAbsentCount)
-                    .absentPercentage(Math.round(absentPercentage * 10.0) / 10.0)
-                    .isBanned(isBanned)
+                    .studentName(student.getLastName() + " " + student.getFirstName())
+                    .totalSessions(finalTotal)
+                    .attendedSessions((int)attended)
+                    .absentSessions(absent)
+                    .absentPercentage(pct)
+                    .isBanned(pct > 30.0)
                     .build();
         }).collect(Collectors.toList());
     }
 
-    private int calculateTotalSessions(LocalDate start, LocalDate end, DayOfWeek classDay) {
-        if (start.isAfter(end)) return 0;
-        LocalDate firstClassDate = start;
-        while (firstClassDate.getDayOfWeek() != classDay) {
-            firstClassDate = firstClassDate.plusDays(1);
+    @Override
+    @Transactional
+    public void sendBanNotifications(Long courseId) {
+        // Logic gửi mail giữ nguyên, chỉ cần sửa cách gọi getCourseStatistics
+        List<StudentAttendanceStat> stats = getCourseStatistics(courseId);
+        for (StudentAttendanceStat stat : stats) {
+            if (stat.isBanned()) {
+                // Tìm Student bằng Code
+                Student student = studentRepository.findById(stat.getStudentCode()).orElse(null);
+                if (student != null && student.getEmail() != null) {
+                    // ... gửi mail
+                    emailService.sendBanNotification(student.getEmail(), student.getLastName(), "Môn học");
+                }
+            }
         }
-        if (firstClassDate.isAfter(end)) return 0;
-        long weeks = ChronoUnit.WEEKS.between(firstClassDate, end);
-        return (int) weeks + 1;
+    }
+
+    private int calculateTotalSessions(LocalDate start, LocalDate end, DayOfWeek day) {
+        if (start.isAfter(end)) return 0;
+        LocalDate date = start;
+        while (date.getDayOfWeek() != day) date = date.plusDays(1);
+        if (date.isAfter(end)) return 0;
+        return (int) ChronoUnit.WEEKS.between(date, end) + 1;
     }
 }

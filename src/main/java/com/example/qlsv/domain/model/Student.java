@@ -2,20 +2,17 @@ package com.example.qlsv.domain.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import java.util.HashSet;
-import java.util.Set;
 
 @Data
-@EqualsAndHashCode(callSuper = true) // Quan trọng khi kế thừa
 @NoArgsConstructor
 @Entity
 @Table(name = "students")
-public class Student extends User {
+public class Student {
 
-    @Column(unique = true, nullable = false, length = 20)
-    private String studentCode; // Mã sinh viên
+    @Id
+    @Column(name = "student_code", length = 20, nullable = false)
+    private String studentCode; // KHÓA CHÍNH MỚI
 
     @Column(nullable = false, length = 50)
     private String firstName;
@@ -23,11 +20,12 @@ public class Student extends User {
     @Column(nullable = false, length = 50)
     private String lastName;
 
-    // Một sinh viên có thể đăng ký nhiều lớp học
-    @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<CourseRegistration> registrations = new HashSet<>();
+    // Quan hệ 1-1 với User (User chứa login info)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false, unique = true)
+    private User user;
 
-    // Một sinh viên có nhiều bản ghi điểm danh
-    @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<AttendanceRecord> attendanceRecords = new HashSet<>();
+    public String getEmail() {
+        return user != null ? user.getEmail() : null;
+    }
 }

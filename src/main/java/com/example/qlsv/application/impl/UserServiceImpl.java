@@ -2,22 +2,19 @@ package com.example.qlsv.application.impl;
 
 import com.example.qlsv.application.dto.mapper.UserMapper;
 import com.example.qlsv.application.dto.request.CreateUserRequest;
-import com.example.qlsv.application.dto.request.UpdateUserRequest; // <-- MỚI
+import com.example.qlsv.application.dto.request.UpdateUserRequest;
 import com.example.qlsv.application.dto.response.UserResponse;
 import com.example.qlsv.application.service.UserService;
 import com.example.qlsv.domain.exception.BusinessException;
-import com.example.qlsv.domain.exception.ResourceNotFoundException; // <-- MỚI
-import com.example.qlsv.domain.model.Admin;
+import com.example.qlsv.domain.exception.ResourceNotFoundException;
 import com.example.qlsv.domain.model.Lecturer;
 import com.example.qlsv.domain.model.Student;
 import com.example.qlsv.domain.model.User;
 import com.example.qlsv.domain.model.enums.Role;
-import com.example.qlsv.domain.repository.CourseRegistrationRepository; // <-- MỚI
-import com.example.qlsv.domain.repository.CourseRepository; // <-- MỚI
-import com.example.qlsv.domain.repository.UserRepository;
+import com.example.qlsv.domain.repository.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page; // <-- MỚI
-import org.springframework.data.domain.Pageable; // <-- MỚI
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,18 +24,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final StudentRepository studentRepository;
+    private final LecturerRepository lecturerRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
 
-    // [MỚI] Cần các repo này để kiểm tra ràng buộc khi xóa
+    // Dùng để kiểm tra ràng buộc khi xóa
     private final CourseRepository courseRepository;
     private final CourseRegistrationRepository registrationRepository;
 
-    // (Hàm createUser giữ nguyên như cũ)
     @Override
     @Transactional
     public UserResponse createUser(CreateUserRequest request) {
-        // 1. Kiểm tra tồn tại
+        // 1. Validate User
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new BusinessException("Username đã tồn tại: " + request.getUsername());
         }
@@ -46,147 +44,135 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException("Email đã tồn tại: " + request.getEmail());
         }
 
-        User newUser;
         Role role;
-
         try {
             role = Role.valueOf("ROLE_" + request.getRole().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new BusinessException("Vai trò không hợp lệ: " + request.getRole());
         }
 
-        String encodedPassword = passwordEncoder.encode(request.getPassword());
-
-        // 2. Tạo đối tượng User cụ thể dựa trên vai trò
-        switch (role) {
-            case ROLE_STUDENT:
-                Student student = new Student();
-                student.setUsername(request.getUsername());
-                student.setPassword(encodedPassword);
-                student.setEmail(request.getEmail());
-                student.setRole(Role.ROLE_STUDENT);
-                student.setFirstName(request.getFirstName());
-                student.setLastName(request.getLastName());
-                student.setStudentCode(request.getStudentCode());
-                newUser = student;
-                break;
-
-            case ROLE_LECTURER:
-                Lecturer lecturer = new Lecturer();
-                lecturer.setUsername(request.getUsername());
-                lecturer.setPassword(encodedPassword);
-                lecturer.setEmail(request.getEmail());
-                lecturer.setRole(Role.ROLE_LECTURER);
-                lecturer.setFirstName(request.getFirstName());
-                lecturer.setLastName(request.getLastName());
-                lecturer.setLecturerCode(request.getLecturerCode());
-                lecturer.setDepartment(request.getDepartment());
-                newUser = lecturer;
-                break;
-
-            case ROLE_ADMIN:
-                Admin admin = new Admin(
-                        request.getUsername(),
-                        encodedPassword,
-                        request.getEmail()
-                );
-                newUser = admin;
-                break;
-
-            default:
-                throw new BusinessException("Vai trò không được hỗ trợ: " + role);
-        }
-
-        // 3. Lưu vào DB
+        // 2. Tạo User (Auth info)
+        User newUser = new User(
+                request.getUsername(),
+                passwordEncoder.encode(request.getPassword()),
+                request.getEmail(),
+                role
+        );
         User savedUser = userRepository.save(newUser);
 
-        // 4. Map sang DTO và trả về
-        return userMapper.toResponse(savedUser);
+        // 3. Tạo Response ngay lập tức
+        UserResponse response = userMapper.toResponse(savedUser);
+
+        // 4. Tạo Hồ sơ chi tiết và Cập nhật vào Response
+        if (role == Role.ROLE_STUDENT) {
+            if (request.getStudentCode() == null || request.getStudentCode().isBlank()) {
+                throw new BusinessException("Mã sinh viên không được để trống");
+            }
+            if (studentRepository.existsById(request.getStudentCode())) {
+                throw new BusinessException("Mã sinh viên đã tồn tại: " + request.getStudentCode());
+            }
+
+            Student student = new Student();
+            student.setStudentCode(request.getStudentCode()); // PK
+            student.setFirstName(request.getFirstName());
+            student.setLastName(request.getLastName());
+            student.setUser(savedUser); // Link FK
+
+            studentRepository.save(student);
+
+            // [SỬA LỖI Ở ĐÂY]: Set dữ liệu vào DTO trả về, KHÔNG set ngược vào Entity User
+            response.setFirstName(student.getFirstName());
+            response.setLastName(student.getLastName());
+
+        } else if (role == Role.ROLE_LECTURER) {
+            if (request.getLecturerCode() == null || request.getLecturerCode().isBlank()) {
+                throw new BusinessException("Mã giảng viên không được để trống");
+            }
+            if (lecturerRepository.existsById(request.getLecturerCode())) {
+                throw new BusinessException("Mã giảng viên đã tồn tại: " + request.getLecturerCode());
+            }
+
+            Lecturer lecturer = new Lecturer();
+            lecturer.setLecturerCode(request.getLecturerCode()); // PK
+            lecturer.setFirstName(request.getFirstName());
+            lecturer.setLastName(request.getLastName());
+            lecturer.setDepartment(request.getDepartment());
+            lecturer.setUser(savedUser); // Link FK
+
+            lecturerRepository.save(lecturer);
+
+            // [SỬA LỖI Ở ĐÂY]: Set dữ liệu vào DTO trả về
+            response.setFirstName(lecturer.getFirstName());
+            response.setLastName(lecturer.getLastName());
+        }
+
+        return response;
     }
-
-
-    // --- [MỚI] TRIỂN KHAI CÁC HÀM CRUD CÒN LẠI ---
 
     @Override
     @Transactional(readOnly = true)
     public UserResponse getUserById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
-
         return userMapper.toResponse(user);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<UserResponse> getAllUsers(Pageable pageable) {
-        // Lấy dữ liệu phân trang từ repository
-        Page<User> userPage = userRepository.findAll(pageable);
-
-        // Chuyển đổi (map) Page<User> thành Page<UserResponse>
-        return userPage.map(userMapper::toResponse);
+        return userRepository.findAll(pageable).map(userMapper::toResponse);
     }
 
     @Override
     @Transactional
     public UserResponse updateUser(Long id, UpdateUserRequest request) {
-        // 1. Tìm người dùng
-        User existingUser = userRepository.findById(id)
+        User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
 
-        // 2. Kiểm tra nghiệp vụ (Email có bị trùng với người khác không)
-        if (request.getEmail() != null && !request.getEmail().equals(existingUser.getEmail())) {
+        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
-                throw new BusinessException("Email đã tồn tại: " + request.getEmail());
+                throw new BusinessException("Email đã tồn tại");
             }
-            existingUser.setEmail(request.getEmail());
+            user.setEmail(request.getEmail());
         }
 
-        // 3. Cập nhật thông tin dựa trên vai trò
-        if (existingUser instanceof Student student) { // (Java 17+ pattern matching)
-            if (request.getFirstName() != null) student.setFirstName(request.getFirstName());
-            if (request.getLastName() != null) student.setLastName(request.getLastName());
-            if (request.getStudentCode() != null) student.setStudentCode(request.getStudentCode());
+        // Cập nhật thông tin chi tiết (Tên, Khoa...)
+        if (user.getStudent() != null) {
+            Student s = user.getStudent();
+            if (request.getFirstName() != null) s.setFirstName(request.getFirstName());
+            if (request.getLastName() != null) s.setLastName(request.getLastName());
+            // Không cho sửa StudentCode vì là PK
+            studentRepository.save(s);
+        } else if (user.getLecturer() != null) {
+            Lecturer l = user.getLecturer();
+            if (request.getFirstName() != null) l.setFirstName(request.getFirstName());
+            if (request.getLastName() != null) l.setLastName(request.getLastName());
+            if (request.getDepartment() != null) l.setDepartment(request.getDepartment());
+            // Không cho sửa LecturerCode vì là PK
+            lecturerRepository.save(l);
         }
-        else if (existingUser instanceof Lecturer lecturer) {
-            if (request.getFirstName() != null) lecturer.setFirstName(request.getFirstName());
-            if (request.getLastName() != null) lecturer.setLastName(request.getLastName());
-            if (request.getLecturerCode() != null) lecturer.setLecturerCode(request.getLecturerCode());
-            if (request.getDepartment() != null) lecturer.setDepartment(request.getDepartment());
-        }
-        // (Admin hiện không có trường riêng để cập nhật)
 
-        // 4. Lưu lại
-        User updatedUser = userRepository.save(existingUser);
-
-        // 5. Trả về
-        return userMapper.toResponse(updatedUser);
+        return userMapper.toResponse(userRepository.save(user));
     }
 
     @Override
     @Transactional
     public void deleteUser(Long id) {
-        // 1. Kiểm tra tồn tại
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
-
-        // 2. Kiểm tra ràng buộc nghiệp vụ (Xóa an toàn)
-        if (user.getRole() == Role.ROLE_LECTURER) {
-            if (courseRepository.existsByLecturerId(id)) {
-                throw new BusinessException("Không thể xóa Giảng viên đang phụ trách Lớp học phần.");
+        // Xóa an toàn: Tìm hồ sơ liên quan và xóa trước
+        studentRepository.findByUserId(id).ifPresent(s -> {
+            if (registrationRepository.existsByStudentStudentCode(s.getStudentCode())) {
+                throw new BusinessException("Sinh viên đã đăng ký học, không thể xóa.");
             }
-        }
-        else if (user.getRole() == Role.ROLE_STUDENT) {
-            if (registrationRepository.existsByStudentId(id)) {
-                throw new BusinessException("Không thể xóa Sinh viên đã đăng ký Lớp học phần.");
-                // (Bạn cũng có thể kiểm tra AttendanceRecord tại đây)
-            }
-        }
-        else if (user.getRole() == Role.ROLE_ADMIN && id == 1L) {
-            // (Giả sử bạn muốn bảo vệ tài khoản admin gốc)
-            // throw new BusinessException("Không thể xóa tài khoản admin gốc.");
-        }
+            studentRepository.delete(s);
+        });
 
-        // 3. Xóa
-        userRepository.delete(user);
+        lecturerRepository.findByUserId(id).ifPresent(l -> {
+            if (courseRepository.existsByLecturerLecturerCode(l.getLecturerCode())) {
+                throw new BusinessException("Giảng viên đang dạy, không thể xóa.");
+            }
+            lecturerRepository.delete(l);
+        });
+
+        userRepository.deleteById(id);
     }
 }

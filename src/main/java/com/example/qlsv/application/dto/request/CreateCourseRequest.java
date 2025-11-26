@@ -6,26 +6,22 @@ import lombok.Data;
 
 @Data
 public class CreateCourseRequest {
-
-    @NotBlank(message = "Mã lớp học phần không được để trống")
+    @NotBlank
     private String courseCode;
 
-    @NotNull(message = "ID Môn học không được để trống")
+    @NotNull
     private Long subjectId;
 
-    @NotNull(message = "ID Giảng viên không được để trống")
-    private Long lecturerId;
+    @NotBlank // Input bây giờ là String Code
+    private String lecturerCode;
 
-    @NotNull(message = "ID Học kỳ không được để trống")
+    @NotNull
     private Long semesterId;
 
-    // --- [MỚI] THÊM LỊCH HỌC ---
-    @NotBlank(message = "Ngày trong tuần không được để trống (VD: MONDAY, TUESDAY...)")
+    @NotBlank
     private String dayOfWeek;
-
-    @NotBlank(message = "Giờ bắt đầu không được để trống (VD: 09:00:00)")
-    private String startTime; // Sẽ là "09:00:00"
-
-    @NotBlank(message = "Giờ kết thúc không được để trống (VD: 12:00:00)")
-    private String endTime;   // Sẽ là "12:00:00"
+    @NotBlank
+    private String startTime;
+    @NotBlank
+    private String endTime;
 }

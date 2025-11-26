@@ -11,5 +11,6 @@ public interface AttendanceSessionMapper {
     @Mapping(source = "id", target = "sessionId")
     @Mapping(source = "course.id", target = "courseId")
     @Mapping(source = "course.subject.name", target = "courseName")
+    @Mapping(source = "qrCodeData", target = "qrCodeData")
     AttendanceSessionResponse toResponse(AttendanceSession session);
 }

@@ -1,11 +1,7 @@
 package com.example.qlsv.application.dto.mapper;
 
-import com.example.qlsv.application.dto.response.SimpleStudentResponse; // <-- MỚI
 import com.example.qlsv.application.dto.response.UserResponse;
-import com.example.qlsv.domain.model.Lecturer;
-import com.example.qlsv.domain.model.Student;
 import com.example.qlsv.domain.model.User;
-import com.example.qlsv.domain.model.enums.Role;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -13,33 +9,36 @@ import org.mapstruct.Named;
 @Mapper(componentModel = "spring")
 public interface UserMapper {
 
-    // (Các hàm toResponse, roleToString, getFirstName... giữ nguyên)
+    // Mapping thủ công để lấy tên từ bảng liên kết
     @Mapping(source = "role", target = "role", qualifiedByName = "roleToString")
-    @Mapping(source = "user", target = "firstName", qualifiedByName = "getFirstName")
-    @Mapping(source = "user", target = "lastName", qualifiedByName = "getLastName")
+    @Mapping(target = "firstName", expression = "java(getFirstName(user))")
+    @Mapping(target = "lastName", expression = "java(getLastName(user))")
     UserResponse toResponse(User user);
 
-    // --- [MỚI] DÙNG CHO API LẤY DANH SÁCH SINH VIÊN ---
-    SimpleStudentResponse studentToSimpleStudentResponse(Student student);
-    // ---------------------------------------------------
-
     @Named("roleToString")
-    default String roleToString(Role role) {
-        if (role == null) return null;
-        return role.name().replace("ROLE_", "");
+    default String roleToString(com.example.qlsv.domain.model.enums.Role role) {
+        return role != null ? role.name().replace("ROLE_", "") : null;
     }
 
-    @Named("getFirstName")
+    // Hàm helper để lấy tên tùy theo Role (Yêu cầu User.java phải có mapping ngược student/lecturer)
+    /* LƯU Ý: Trong file domain/model/User.java bạn CẦN BỎ COMMENT 2 dòng này:
+       @OneToOne(mappedBy = "user") private Student student;
+       @OneToOne(mappedBy = "user") private Lecturer lecturer;
+    */
     default String getFirstName(User user) {
-        if (user instanceof Student) return ((Student) user).getFirstName();
-        if (user instanceof Lecturer) return ((Lecturer) user).getFirstName();
-        return null;
+        if (user.getStudent() != null) return user.getStudent().getFirstName();
+        if (user.getLecturer() != null) return user.getLecturer().getFirstName();
+        return "Admin"; // Hoặc default
     }
 
-    @Named("getLastName")
     default String getLastName(User user) {
-        if (user instanceof Student) return ((Student) user).getLastName();
-        if (user instanceof Lecturer) return ((Lecturer) user).getLastName();
-        return null;
+        if (user.getStudent() != null) return user.getStudent().getLastName();
+        if (user.getLecturer() != null) return user.getLecturer().getLastName();
+        return "";
     }
+
+    // Mapper cho SimpleStudentResponse (Dùng trong danh sách lớp)
+    @Mapping(source = "studentCode", target = "studentCode") // Giờ lấy trực tiếp
+    @Mapping(source = "user.email", target = "email")        // Lấy email từ user
+    com.example.qlsv.application.dto.response.SimpleStudentResponse studentToSimpleStudentResponse(com.example.qlsv.domain.model.Student student);
 }

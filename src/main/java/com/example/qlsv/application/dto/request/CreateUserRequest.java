@@ -8,31 +8,26 @@ import lombok.Data;
 @Data
 public class CreateUserRequest {
 
-    // Thông tin chung
-    @NotBlank
-    @Size(min = 3, max = 50)
+    @NotBlank @Size(min = 3, max = 50)
     private String username;
 
-    @NotBlank
-    @Size(min = 6, max = 100)
+    @NotBlank @Size(min = 6, max = 100)
     private String password;
 
-    @NotBlank
-    @Email
+    @NotBlank @Email
     private String email;
 
     @NotBlank
-    // Phải là: "STUDENT", "LECTURER", hoặc "ADMIN" (Không có tiền tố ROLE_)
-    private String role;
+    private String role; // STUDENT, LECTURER, ADMIN
 
-    // Thông tin riêng
+    // Thông tin chung
     private String firstName;
     private String lastName;
 
-    // Dành cho STUDENT
+    // --- BẮT BUỘC NẾU LÀ STUDENT ---
     private String studentCode;
 
-    // Dành cho LECTURER
+    // --- BẮT BUỘC NẾU LÀ LECTURER ---
     private String lecturerCode;
     private String department;
 }

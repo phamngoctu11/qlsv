@@ -7,8 +7,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface AttendanceRecordRepository extends JpaRepository<AttendanceRecord, Long> {
 
-    /**
-     * Kiểm tra xem sinh viên đã điểm danh cho phiên này chưa
-     */
-    boolean existsBySessionIdAndStudentId(Long sessionId, Long studentId);
+    // Sửa tên hàm cho đúng chuẩn JPA:
+    // Tìm theo SessionId VÀ Student (đối tượng con) -> StudentCode (trường của con)
+    boolean existsBySessionIdAndStudentStudentCode(Long sessionId, String studentCode);
 }

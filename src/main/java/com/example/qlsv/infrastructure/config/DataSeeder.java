@@ -1,6 +1,7 @@
-package com.example.qlsv.infrastructure.config; // (Hoặc com.example.qlsv...)
+package com.example.qlsv.infrastructure.config;
 
-import com.example.qlsv.domain.model.Admin;
+import com.example.qlsv.domain.model.User;
+import com.example.qlsv.domain.model.enums.Role;
 import com.example.qlsv.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
@@ -16,24 +17,19 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // Kiểm tra xem admin đã tồn tại chưa
+        // Tạo Admin (Admin không cần bảng phụ, chỉ cần User)
         if (userRepository.findByUsername("admin").isEmpty()) {
-
-            // Tạo đối tượng Admin mới
-            Admin adminUser = new Admin(
+            User admin = new User(
                     "admin",
-                    // Mã hóa mật khẩu bạn yêu cầu
                     passwordEncoder.encode("123456"),
-                    "admin@yourcompany.com" // Email mặc định
+                    "admin@test.com",
+                    Role.ROLE_ADMIN
             );
-
-            userRepository.save(adminUser);
-
-            System.out.println("=============================================");
-            System.out.println("=== Đã tạo tài khoản ADMIN mặc định ===");
-            System.out.println("   Username: admin");
-            System.out.println("   Password: 123456");
-            System.out.println("=============================================");
+            userRepository.save(admin);
+            System.out.println("--- SEEDER: Đã tạo Admin (admin/123456) ---");
         }
+
+        // (Bạn có thể thêm code seed Student/Lecturer ở đây nếu muốn,
+        // nhưng dùng API createUser sẽ an toàn hơn vì nó xử lý cả 2 bảng)
     }
 }

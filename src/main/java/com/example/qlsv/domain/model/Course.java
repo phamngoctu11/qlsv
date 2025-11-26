@@ -4,10 +4,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.DayOfWeek; // <-- IMPORT MỚI
-import java.time.LocalTime; // <-- IMPORT MỚI
-import java.util.HashSet;
-import java.util.Set;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 
 @Data
 @NoArgsConstructor
@@ -22,33 +20,28 @@ public class Course {
     @Column(unique = true, nullable = false, length = 50)
     private String courseCode;
 
-    // --- [MỚI] THÊM LỊCH HỌC CỐ ĐỊNH ---
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private DayOfWeek dayOfWeek; // Ví dụ: MONDAY, TUESDAY
+    private DayOfWeek dayOfWeek;
 
     @Column(nullable = false)
-    private LocalTime startTime; // Ví dụ: 09:00:00
+    private LocalTime startTime;
 
     @Column(nullable = false)
-    private LocalTime endTime; // Ví dụ: 12:00:00
-    // ---------------------------------
+    private LocalTime endTime;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subject_id", nullable = false)
     private Subject subject;
 
+    // --- THAY ĐỔI Ở ĐÂY ---
+    // JoinColumn sẽ trỏ tới 'lecturer_code' (String) thay vì 'id'
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "lecturer_id", nullable = false)
+    @JoinColumn(name = "lecturer_code", nullable = false)
     private Lecturer lecturer;
+    // ---------------------
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "semester_id", nullable = false)
     private Semester semester;
-
-    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<CourseRegistration> registrations = new HashSet<>();
-
-    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<AttendanceSession> sessions = new HashSet<>();
 }

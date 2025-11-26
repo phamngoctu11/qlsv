@@ -1,27 +1,32 @@
 package com.example.qlsv.domain.repository;
 
 import com.example.qlsv.domain.model.Course;
+import com.example.qlsv.domain.model.Student;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface CourseRepository extends JpaRepository<Course, Long> {
-    // Tìm lớp học dựa trên ID và ID giảng viên
-    Optional<Course> findByIdAndLecturerId(Long courseId, Long lecturerId);
+
     Optional<Course> findByCourseCode(String courseCode);
 
-    // 2. Kiểm tra nghiệp vụ (trước khi xóa)
-    // (Đây là các phương thức tôi đã "nhá hàng" ở các file service trước)
     boolean existsBySubjectId(Long subjectId);
     boolean existsBySemesterId(Long semesterId);
-    boolean existsByLecturerId(Long lecturerId);
 
-    // 3. Lấy lớp học phần theo giảng viên
-    List<Course> findByLecturerId(Long lecturerId);
+    // Sửa: Lecturer ID giờ là String code
+    boolean existsByLecturerLecturerCode(String lecturerCode);
 
-    // 4. (Nâng cao) Lấy danh sách sinh viên trong lớp
+    // Sửa: find by Lecturer Code
+    List<Course> findByLecturerLecturerCode(String lecturerCode);
+
+    // Sửa: Tìm giảng viên phụ trách (dùng Code)
+    Optional<Course> findByIdAndLecturerLecturerCode(Long id, String lecturerCode);
+
+    // Query lấy sinh viên
     @Query("SELECT cr.student FROM CourseRegistration cr WHERE cr.course.id = :courseId")
-    List<com.example.qlsv.domain.model.Student> findStudentsByCourseId(Long courseId);
+    List<Student> findStudentsByCourseId(Long courseId);
 }

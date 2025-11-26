@@ -3,7 +3,6 @@ package com.example.qlsv.domain.model;
 import com.example.qlsv.domain.model.enums.Role;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
@@ -17,8 +16,7 @@ import java.util.Collections;
 @NoArgsConstructor
 @Entity
 @Table(name = "users")
-@Inheritance(strategy = InheritanceType.JOINED) // Chiến lược kế thừa
-public abstract class User implements UserDetails {
+public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,7 +36,16 @@ public abstract class User implements UserDetails {
     @Column(nullable = false, length = 20)
     private Role role;
 
-    private boolean enabled = true; // Dùng cho UserDetails
+    private boolean enabled = true;
+
+    // --- [QUAN TRỌNG] PHẢI CÓ ĐOẠN NÀY ĐỂ MAPPER HOẠT ĐỘNG ---
+    // Quan hệ 2 chiều (Bi-directional) để từ User có thể lấy được thông tin chi tiết
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
+    private Student student;
+
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
+    private Lecturer lecturer;
+    // ---------------------------------------------------------
 
     public User(String username, String password, String email, Role role) {
         this.username = username;
@@ -47,30 +54,17 @@ public abstract class User implements UserDetails {
         this.role = role;
     }
 
-    // --- Triển khai các phương thức của UserDetails ---
-
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.singletonList(new SimpleGrantedAuthority(role.name()));
     }
 
     @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
+    public boolean isAccountNonExpired() { return true; }
     @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
+    public boolean isAccountNonLocked() { return true; }
     @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
+    public boolean isCredentialsNonExpired() { return true; }
     @Override
-    public boolean isEnabled() {
-        return this.enabled;
-    }
+    public boolean isEnabled() { return enabled; }
 }

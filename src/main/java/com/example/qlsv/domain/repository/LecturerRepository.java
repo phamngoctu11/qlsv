@@ -7,7 +7,8 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface LecturerRepository extends JpaRepository<Lecturer, Long> {
-    // Tìm giảng viên bằng username (kế thừa từ User)
-    Optional<Lecturer> findByUsername(String username);
+public interface LecturerRepository extends JpaRepository<Lecturer, String> { // ID là String (code)
+
+    // Tìm giảng viên dựa trên User ID
+    Optional<Lecturer> findByUserId(Long userId);
 }

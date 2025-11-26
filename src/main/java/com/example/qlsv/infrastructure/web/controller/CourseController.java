@@ -4,7 +4,7 @@ import com.example.qlsv.application.dto.request.CreateCourseRequest;
 import com.example.qlsv.application.dto.request.RegisterStudentRequest;
 import com.example.qlsv.application.dto.response.CourseResponse;
 import com.example.qlsv.application.dto.response.SimpleStudentResponse;
-import com.example.qlsv.application.dto.response.StudentAttendanceStat; // <-- MỚI
+import com.example.qlsv.application.dto.response.StudentAttendanceStat;
 import com.example.qlsv.application.service.CourseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -50,12 +50,15 @@ public class CourseController {
         return ResponseEntity.noContent().build();
     }
 
+    // --- [SỬA LỖI Ở ĐÂY] ---
     @PostMapping("/register-student")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> registerStudentToCourse(@Valid @RequestBody RegisterStudentRequest request) {
-        courseService.registerStudent(request.getStudentId(), request.getCourseId());
+        // Sửa getStudentId() thành getStudentCode()
+        courseService.registerStudent(request.getStudentCode(), request.getCourseId());
         return ResponseEntity.ok().build();
     }
+    // -----------------------
 
     @GetMapping("/{id}/students")
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
@@ -67,15 +70,22 @@ public class CourseController {
     @GetMapping("/by-lecturer/{lecturerId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
     public ResponseEntity<List<CourseResponse>> getCoursesByLecturer(@PathVariable Long lecturerId) {
+        // Lưu ý: lecturerId ở đây là User ID (Long)
         List<CourseResponse> courses = courseService.getCoursesByLecturer(lecturerId);
         return ResponseEntity.ok(courses);
     }
 
-    // --- [MỚI] ENDPOINT THỐNG KÊ ---
     @GetMapping("/{id}/statistics")
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
     public ResponseEntity<List<StudentAttendanceStat>> getCourseStats(@PathVariable Long id) {
         List<StudentAttendanceStat> stats = courseService.getCourseStatistics(id);
         return ResponseEntity.ok(stats);
+    }
+
+    @PostMapping("/{id}/send-ban-notifications")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    public ResponseEntity<String> sendBanNotifications(@PathVariable Long id) {
+        courseService.sendBanNotifications(id);
+        return ResponseEntity.ok("Đã gửi lệnh gửi email cảnh báo cho các sinh viên bị cấm thi.");
     }
 }

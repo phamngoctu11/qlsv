@@ -25,84 +25,67 @@ public class AttendanceScannerTask {
     private final AttendanceRecordRepository recordRepository;
     private final EmailService emailService;
 
-    // Chạy mỗi 30 phút
     @Scheduled(cron = "0 0/30 * * * *")
     @Transactional
     public void scanForAbsencesAndBan() {
-        System.out.println("--- [TASK] Đang quét các lớp vừa kết thúc để kiểm tra vắng mặt... ---");
-
+        System.out.println("--- [TASK] Đang quét điểm danh... ---");
         LocalDate today = LocalDate.now();
         LocalTime now = LocalTime.now();
         DayOfWeek currentDay = today.getDayOfWeek();
 
-        // 1. Lấy tất cả lớp học của HÔM NAY
         List<Course> coursesToday = courseRepository.findAll().stream()
                 .filter(c -> c.getDayOfWeek() == currentDay)
                 .toList();
 
         for (Course course : coursesToday) {
-            // 2. Chỉ xử lý các lớp ĐÃ KẾT THÚC trong vòng 1 tiếng qua
             if (now.isAfter(course.getEndTime()) && now.isBefore(course.getEndTime().plusHours(1))) {
-                System.out.println("--- [TASK] Đang xử lý lớp: " + course.getCourseCode());
                 processAbsentStudents(course);
             }
         }
     }
 
     private void processAbsentStudents(Course course) {
-        // Lấy danh sách sinh viên trong lớp
         List<Student> students = courseRepository.findStudentsByCourseId(course.getId());
 
-        int totalSessions = calculateTotalSessions(course.getSemester().getStartDate(), course.getSemester().getEndDate(), course.getDayOfWeek());
-        if (totalSessions == 0) totalSessions = 1;
+        int total = calculateSessions(course.getSemester().getStartDate(), course.getSemester().getEndDate(), course.getDayOfWeek());
+        if (total == 0) total = 1;
+        int passed = calculateSessions(course.getSemester().getStartDate(), LocalDate.now(), course.getDayOfWeek());
 
-        int passedSessions = calculateTotalSessions(course.getSemester().getStartDate(), LocalDate.now(), course.getDayOfWeek());
-
-        // Lấy toàn bộ record để tối ưu (tránh query trong loop)
+        // Lấy tất cả record
         var allRecords = recordRepository.findAll();
 
         for (Student student : students) {
-            // Đếm số lần đi học
-            long attendedCount = allRecords.stream()
+            long attended = allRecords.stream()
                     .filter(r -> r.getSession().getCourse().getId().equals(course.getId())
-                            && r.getStudent().getId().equals(student.getId())
+                            // --- SỬA: SO SÁNH STUDENT CODE ---
+                            && r.getStudent().getStudentCode().equals(student.getStudentCode())
                             && (r.getStatus() == AttendanceStatus.PRESENT || r.getStatus() == AttendanceStatus.LATE))
                     .count();
 
-            int absentCount = passedSessions - (int) attendedCount;
-            if (absentCount < 0) absentCount = 0;
+            int absent = passed - (int) attended;
+            if (absent < 0) absent = 0;
+            double pct = ((double) absent / total) * 100;
 
-            double absentPercentage = ((double) absentCount / totalSessions) * 100;
-
-            // KIỂM TRA ĐIỀU KIỆN GỬI MAIL
-            // Điều kiện: Vắng > 30% VÀ buổi vắng hôm nay là buổi quyết định
-            if (absentPercentage > 30.0) {
-                // Tính thử % của lần trước (tức là nếu đi học hôm nay thì sao?)
-                // Nếu (vắng - 1) vẫn > 30% nghĩa là đã bị cấm từ trước rồi -> Không gửi nữa
-                // Nếu (vắng - 1) <= 30% nghĩa là hôm nay mới chính thức bị cấm -> GỬI
-
-                double prevPercentage = ((double) (absentCount - 1) / totalSessions) * 100;
-
-                if (prevPercentage <= 30.0) {
-                    System.out.println("--- [TASK] Phát hiện sinh viên " + student.getStudentCode() + " bị cấm thi. Đang gửi mail...");
+            if (pct > 30.0) {
+                double prevPct = ((double) (absent - 1) / total) * 100;
+                if (prevPct <= 30.0) {
+                    // Lấy email từ bảng User thông qua Student
+                    String email = student.getUser().getEmail();
                     emailService.sendBanNotification(
-                            student.getEmail(),
+                            email,
                             student.getLastName() + " " + student.getFirstName(),
-                            course.getSubject().getName() + " (" + course.getCourseCode() + ")"
+                            course.getCourseCode()
                     );
                 }
             }
         }
     }
 
-    private int calculateTotalSessions(LocalDate start, LocalDate end, DayOfWeek classDay) {
+    private int calculateSessions(LocalDate start, LocalDate end, DayOfWeek day) {
         if (start.isAfter(end)) return 0;
-        LocalDate firstClassDate = start;
-        while (firstClassDate.getDayOfWeek() != classDay) {
-            firstClassDate = firstClassDate.plusDays(1);
-        }
-        if (firstClassDate.isAfter(end)) return 0;
-        long weeks = ChronoUnit.WEEKS.between(firstClassDate, end);
-        return (int) weeks + 1;
+        LocalDate d = start;
+        while (d.getDayOfWeek() != day) d = d.plusDays(1);
+        if (d.isAfter(end)) return 0;
+        return (int) ChronoUnit.WEEKS.between(d, end) + 1;
     }
 }

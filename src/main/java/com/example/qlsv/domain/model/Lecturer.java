@@ -2,20 +2,17 @@ package com.example.qlsv.domain.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import java.util.HashSet;
-import java.util.Set;
 
 @Data
-@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @Entity
 @Table(name = "lecturers")
-public class Lecturer extends User {
+public class Lecturer {
 
-    @Column(unique = true, nullable = false, length = 20)
-    private String lecturerCode; // Mã giảng viên
+    @Id
+    @Column(name = "lecturer_code", length = 20, nullable = false)
+    private String lecturerCode; // KHÓA CHÍNH MỚI
 
     @Column(nullable = false, length = 50)
     private String firstName;
@@ -24,9 +21,10 @@ public class Lecturer extends User {
     private String lastName;
 
     @Column(length = 100)
-    private String department; // Khoa
+    private String department;
 
-    // Một giảng viên dạy nhiều lớp học phần
-    @OneToMany(mappedBy = "lecturer", cascade = CascadeType.PERSIST)
-    private Set<Course> courses = new HashSet<>();
+    // Quan hệ 1-1 với User
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false, unique = true)
+    private User user;
 }
