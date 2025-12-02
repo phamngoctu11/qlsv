@@ -12,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -23,69 +22,62 @@ public class CourseController {
     private final CourseService courseService;
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    // Thư ký và Admin được tạo lớp học phần
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY')")
     public ResponseEntity<CourseResponse> createCourse(@Valid @RequestBody CreateCourseRequest request) {
-        CourseResponse createdCourse = courseService.createCourse(request);
-        return new ResponseEntity<>(createdCourse, HttpStatus.CREATED);
+        return new ResponseEntity<>(courseService.createCourse(request), HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY', 'LECTURER', 'STUDENT')")
     public ResponseEntity<CourseResponse> getCourseById(@PathVariable Long id) {
-        CourseResponse course = courseService.getCourseById(id);
-        return ResponseEntity.ok(course);
+        return ResponseEntity.ok(courseService.getCourseById(id));
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY')")
     public ResponseEntity<List<CourseResponse>> getAllCourses() {
-        List<CourseResponse> courses = courseService.getAllCourses();
-        return ResponseEntity.ok(courses);
+        return ResponseEntity.ok(courseService.getAllCourses());
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')") // Xóa lớp vẫn nên để Admin
     public ResponseEntity<Void> deleteCourse(@PathVariable Long id) {
         courseService.deleteCourse(id);
         return ResponseEntity.noContent().build();
     }
 
-    // --- [SỬA LỖI Ở ĐÂY] ---
     @PostMapping("/register-student")
-    @PreAuthorize("hasRole('ADMIN')")
+    // Thư ký và Admin được ghi danh
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY')")
     public ResponseEntity<Void> registerStudentToCourse(@Valid @RequestBody RegisterStudentRequest request) {
-        // Sửa getStudentId() thành getStudentCode()
         courseService.registerStudent(request.getStudentCode(), request.getCourseId());
         return ResponseEntity.ok().build();
     }
-    // -----------------------
 
+    // Các API khác giữ nguyên, chỉ cần update @PreAuthorize nếu cần SECRETARY xem
     @GetMapping("/{id}/students")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY', 'LECTURER')")
     public ResponseEntity<List<SimpleStudentResponse>> getStudentsInCourse(@PathVariable Long id) {
-        List<SimpleStudentResponse> students = courseService.getStudentsByCourse(id);
-        return ResponseEntity.ok(students);
+        return ResponseEntity.ok(courseService.getStudentsByCourse(id));
     }
 
     @GetMapping("/by-lecturer/{lecturerId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY', 'LECTURER')")
     public ResponseEntity<List<CourseResponse>> getCoursesByLecturer(@PathVariable Long lecturerId) {
-        // Lưu ý: lecturerId ở đây là User ID (Long)
-        List<CourseResponse> courses = courseService.getCoursesByLecturer(lecturerId);
-        return ResponseEntity.ok(courses);
+        return ResponseEntity.ok(courseService.getCoursesByLecturer(lecturerId));
     }
 
     @GetMapping("/{id}/statistics")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY', 'LECTURER')")
     public ResponseEntity<List<StudentAttendanceStat>> getCourseStats(@PathVariable Long id) {
-        List<StudentAttendanceStat> stats = courseService.getCourseStatistics(id);
-        return ResponseEntity.ok(stats);
+        return ResponseEntity.ok(courseService.getCourseStatistics(id));
     }
 
     @PostMapping("/{id}/send-ban-notifications")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY', 'LECTURER')")
     public ResponseEntity<String> sendBanNotifications(@PathVariable Long id) {
         courseService.sendBanNotifications(id);
-        return ResponseEntity.ok("Đã gửi lệnh gửi email cảnh báo cho các sinh viên bị cấm thi.");
+        return ResponseEntity.ok("Đã gửi lệnh gửi email.");
     }
 }

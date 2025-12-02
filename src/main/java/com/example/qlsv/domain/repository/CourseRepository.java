@@ -12,21 +12,26 @@ import java.util.Optional;
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Long> {
 
+    // 1. Các hàm cơ bản
     Optional<Course> findByCourseCode(String courseCode);
-
     boolean existsBySubjectId(Long subjectId);
     boolean existsBySemesterId(Long semesterId);
 
-    // Sửa: Lecturer ID giờ là String code
+    // 2. Các hàm hỗ trợ cấu trúc mới (String Code)
     boolean existsByLecturerLecturerCode(String lecturerCode);
-
-    // Sửa: find by Lecturer Code
     List<Course> findByLecturerLecturerCode(String lecturerCode);
-
-    // Sửa: Tìm giảng viên phụ trách (dùng Code)
     Optional<Course> findByIdAndLecturerLecturerCode(Long id, String lecturerCode);
 
-    // Query lấy sinh viên
+    // 3. Hàm lấy danh sách sinh viên
     @Query("SELECT cr.student FROM CourseRegistration cr WHERE cr.course.id = :courseId")
     List<Student> findStudentsByCourseId(Long courseId);
+
+    // 4. Validate Lịch học SINH VIÊN
+    @Query("SELECT cr.course FROM CourseRegistration cr " +
+            "WHERE cr.student.studentCode = :studentCode " +
+            "AND cr.course.semester.id = :semesterId")
+    List<Course> findCoursesByStudentCodeAndSemesterId(String studentCode, Long semesterId);
+
+    // 5. [MỚI] Validate Lịch dạy GIẢNG VIÊN (Lấy các lớp GV dạy trong học kỳ này)
+    List<Course> findByLecturerLecturerCodeAndSemesterId(String lecturerCode, Long semesterId);
 }

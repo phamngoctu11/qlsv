@@ -8,45 +8,44 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/semesters")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')") // Chỉ Admin được quản lý học kỳ
 public class SemesterController {
 
     private final SemesterService semesterService;
 
+    // CHỈ ADMIN MỚI ĐƯỢC TẠO
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SemesterDTO> createSemester(@Valid @RequestBody SemesterDTO semesterDTO) {
-        SemesterDTO createdSemester = semesterService.createSemester(semesterDTO);
-        return new ResponseEntity<>(createdSemester, HttpStatus.CREATED);
+        return new ResponseEntity<>(semesterService.createSemester(semesterDTO), HttpStatus.CREATED);
     }
 
+    // Thư ký và Admin được xem
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY')")
     public ResponseEntity<SemesterDTO> getSemesterById(@PathVariable Long id) {
-        SemesterDTO semester = semesterService.getSemesterById(id);
-        return ResponseEntity.ok(semester);
+        return ResponseEntity.ok(semesterService.getSemesterById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY')")
     public ResponseEntity<List<SemesterDTO>> getAllSemesters() {
-        List<SemesterDTO> semesters = semesterService.getAllSemesters();
-        return ResponseEntity.ok(semesters);
+        return ResponseEntity.ok(semesterService.getAllSemesters());
     }
 
+    // CHỈ ADMIN MỚI ĐƯỢC SỬA/XÓA
     @PutMapping("/{id}")
-    public ResponseEntity<SemesterDTO> updateSemester(
-            @PathVariable Long id,
-            @Valid @RequestBody SemesterDTO semesterDTO
-    ) {
-        SemesterDTO updatedSemester = semesterService.updateSemester(id, semesterDTO);
-        return ResponseEntity.ok(updatedSemester);
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<SemesterDTO> updateSemester(@PathVariable Long id, @Valid @RequestBody SemesterDTO semesterDTO) {
+        return ResponseEntity.ok(semesterService.updateSemester(id, semesterDTO));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteSemester(@PathVariable Long id) {
         semesterService.deleteSemester(id);
         return ResponseEntity.noContent().build();

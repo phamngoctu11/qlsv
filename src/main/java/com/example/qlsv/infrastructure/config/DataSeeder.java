@@ -28,6 +28,16 @@ public class DataSeeder implements CommandLineRunner {
             userRepository.save(admin);
             System.out.println("--- SEEDER: Đã tạo Admin (admin/123456) ---");
         }
+        else if (userRepository.findByUsername("secretary").isEmpty()) {
+            User secretary = new User(
+                    "secretary",
+                    passwordEncoder.encode("123456"),
+                    "secretary@test.com",
+                    Role.ROLE_SECRETARY
+            );
+            userRepository.save(secretary);
+            System.out.println("--- SEEDER: Đã tạo Thư ký (secretary/123456) ---");
+        }
 
         // (Bạn có thể thêm code seed Student/Lecturer ở đây nếu muốn,
         // nhưng dùng API createUser sẽ an toàn hơn vì nó xử lý cả 2 bảng)
