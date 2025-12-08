@@ -8,20 +8,22 @@ import lombok.Data;
 @Data
 public class CreateUserRequest {
 
-    @NotBlank @Size(min = 3, max = 50)
+    @Size(min = 3, max = 50,message = "vui lòng điền username(3-50 kí tự)")
     private String username;
 
-    @NotBlank @Size(min = 6, max = 100)
+    @Size(min = 6, max = 100,message = "vui lòng điền password(6-100 kí tự)")
     private String password;
 
-    @NotBlank @Email
+    @Email
     private String email;
 
     @NotBlank
     private String role; // STUDENT, LECTURER, ADMIN
 
     // Thông tin chung
+    @Size(min = 3, max = 50,message = "vui lòng điền FirstName(3-50 kí tự)")
     private String firstName;
+    @Size(min = 3, max = 50,message = "vui lòng điền LastName(3-50 kí tự)")
     private String lastName;
 
     // --- BẮT BUỘC NẾU LÀ STUDENT ---

@@ -7,7 +7,7 @@ import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface LecturerMapper {
-
+    @Mapping(source = "user.id", target = "id")
     @Mapping(source = "lecturerCode", target = "lecturerCode")
     SimpleLecturerResponse toSimpleResponse(Lecturer lecturer);
 }

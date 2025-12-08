@@ -11,10 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/attendance")
@@ -38,6 +37,15 @@ public class AttendanceController {
         AttendanceSessionResponse response = attendanceService.startSession(request, lecturerId);
         return ResponseEntity.ok(response);
     }
+    @PostMapping("/close-session")
+    @PreAuthorize("hasRole('LECTURER')") // Chỉ Giảng viên được đóng
+    public ResponseEntity<AttendanceSessionResponse> closeSession(
+            @Valid @RequestBody StartSessionRequest request, // Dùng lại DTO này vì nó có chứa courseId
+            @AuthenticationPrincipal User currentUser
+    ) {
+        AttendanceSessionResponse response = attendanceService.closeSession(request.getCourseId(), currentUser.getId());
+        return ResponseEntity.ok(response);
+    }
 
     /**
      * [MỚI] Endpoint cho Sinh viên check-in.
@@ -53,5 +61,11 @@ public class AttendanceController {
 
         CheckInResponse response = attendanceService.studentCheckIn(request, studentId);
         return ResponseEntity.ok(response);
+    }
+    @GetMapping("/course/{courseId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY', 'LECTURER', 'STUDENT')")
+    public ResponseEntity<List<AttendanceSessionResponse>> getSessionsByCourse(@PathVariable Long courseId) {
+        List<AttendanceSessionResponse> sessions = attendanceService.getSessionsByCourse(courseId);
+        return ResponseEntity.ok(sessions);
     }
 }

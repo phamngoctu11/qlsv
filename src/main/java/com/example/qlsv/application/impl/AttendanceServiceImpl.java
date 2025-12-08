@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -62,6 +64,19 @@ public class AttendanceServiceImpl implements AttendanceService {
         AttendanceSession session = new AttendanceSession(course, lecturer);
         return sessionMapper.toResponse(sessionRepository.save(session));
     }
+    @Override
+    @Transactional(readOnly = true)
+    public List<AttendanceSessionResponse> getSessionsByCourse(Long courseId) {
+        // Kiểm tra lớp học có tồn tại không
+        if (!courseRepository.existsById(courseId)) {
+            throw new ResourceNotFoundException("Course", "id", courseId);
+        }
+
+        // Lấy danh sách và Map sang DTO
+        return sessionRepository.findByCourseIdOrderByStartTimeDesc(courseId).stream()
+                .map(sessionMapper::toResponse)
+                .collect(Collectors.toList());
+    }
 
     @Override
     @Transactional
@@ -102,5 +117,30 @@ public class AttendanceServiceImpl implements AttendanceService {
         recordRepository.save(record);
 
         return new CheckInResponse("Điểm danh thành công!", status, record.getCheckInTime());
+    }
+    @Override
+    @Transactional
+    public AttendanceSessionResponse closeSession(Long courseId, Long userId) {
+        // 1. Lấy thông tin Giảng viên từ User ID
+        Lecturer lecturer = lecturerRepository.findByUserId(userId)
+                .orElseThrow(() -> new BusinessException("Không tìm thấy thông tin giảng viên."));
+
+        // 2. Tìm phiên đang MỞ của lớp học này
+        AttendanceSession session = sessionRepository.findByCourseIdAndStatus(courseId, SessionStatus.OPEN)
+                .orElseThrow(() -> new BusinessException("Lớp học này hiện không có phiên điểm danh nào đang mở."));
+
+        // 3. Kiểm tra quyền sở hữu (Giảng viên này có phải người dạy lớp này không)
+        // So sánh lecturerCode trong session và lecturerCode của người đang login
+        if (!session.getLecturer().getLecturerCode().equals(lecturer.getLecturerCode())) {
+            throw new BusinessException("Bạn không có quyền đóng phiên điểm danh của giảng viên khác.");
+        }
+
+        // 4. Đóng phiên
+        session.setStatus(SessionStatus.CLOSED);
+
+        // (Tuỳ chọn) Nếu muốn kích hoạt quét vắng mặt ngay lập tức thì gọi logic đó ở đây
+        // Nhưng để đơn giản, cứ để Task tự động quét sau.
+
+        return sessionMapper.toResponse(sessionRepository.save(session));
     }
 }
