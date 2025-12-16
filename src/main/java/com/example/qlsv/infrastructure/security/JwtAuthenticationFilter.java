@@ -5,9 +5,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -19,40 +21,48 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtTokenProvider tokenProvider;
-    private final UserDetailsServiceImpl userDetailsService;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final UserDetailsService userDetailsService; // Load user từ DB
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain
+    ) throws ServletException, IOException {
+
         try {
+            // 1. Lấy token từ header
             String jwt = getJwtFromRequest(request);
 
-            if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
-                String username = tokenProvider.getUsernameFromJWT(jwt);
+            // 2. Kiểm tra token có hợp lệ không
+            if (StringUtils.hasText(jwt) && jwtTokenProvider.isTokenValid(jwt)) {
 
-                // Tải UserDetails từ DB
+                // 3. Lấy username từ token
+                String username = jwtTokenProvider.extractUsername(jwt);
+
+                // 4. Load thông tin user từ DB (bao gồm cả Roles/Authorities chuẩn nhất từ DB)
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                // Tạo đối tượng Authentication
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                // 5. Tạo đối tượng Authentication
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities() // Quan trọng: Nạp quyền vào Context
+                );
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                // Đặt thông tin xác thực vào Security Context
-                // Đây là mấu chốt để @PreAuthorize hoạt động
+                // 6. Set vào SecurityContext
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception ex) {
-            logger.error("Không thể set user authentication trong security context", ex);
+            logger.error("Could not set user authentication in security context", ex);
         }
 
         filterChain.doFilter(request, response);
     }
 
-    // Lấy token từ header "Authorization: Bearer <token>"
     private String getJwtFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {

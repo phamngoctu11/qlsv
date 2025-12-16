@@ -5,7 +5,8 @@ import lombok.Data;
 
 @Data
 public class StudentCheckInRequest {
-
-    @NotNull(message = "ID Lớp học phần không được để trống")
+    @NotNull(message = "Course ID cannot be null")
     private Long courseId;
+
+    private String qrCodeData; // Trường này phải có để service gọi getQrCodeData()
 }

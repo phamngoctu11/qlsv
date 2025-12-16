@@ -2,46 +2,35 @@ package com.example.qlsv.domain.model;
 
 import com.example.qlsv.domain.model.enums.SessionStatus;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
-import java.util.UUID;
+import lombok.*;
 
-@Data
-@NoArgsConstructor
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "attendance_sessions")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class AttendanceSession {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "course_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "course_id")
     private Course course;
 
-    // --- THAY ĐỔI ---
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "lecturer_code", nullable = false)
-    private Lecturer lecturer;
-    // ----------------
+    // --- SỬA ĐOẠN NÀY: Trỏ tới User thay vì Lecturer ---
+    @ManyToOne
+    @JoinColumn(name = "lecturer_user_id") // Đổi tên cột cho khớp logic mới
+    private User lecturer;
+    // --------------------------------------------------
 
-    @Column(nullable = false)
     private LocalDateTime startTime;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private SessionStatus status;
-
-    @Column(nullable = false, unique = true)
     private String qrCodeData;
 
-    public AttendanceSession(Course course, Lecturer lecturer) {
-        this.course = course;
-        this.lecturer = lecturer;
-        this.startTime = LocalDateTime.now();
-        this.status = SessionStatus.OPEN;
-        this.qrCodeData = UUID.randomUUID().toString();
-    }
+    @Enumerated(EnumType.STRING)
+    private SessionStatus status;
 }

@@ -22,11 +22,7 @@ public class TestEmailController {
         System.out.println("--- Đang thử gửi email tới: " + emailNhan + " ---");
 
         // Gọi hàm gửi mail có sẵn trong Service của chúng ta
-        emailService.sendBanNotification(
-                emailNhan,
-                "Sinh Viên Test",
-                "Lập trình Java (Test)"
-        );
+
 
         return ResponseEntity.ok("Đã gửi lệnh gửi mail. Hãy kiểm tra Console và Hộp thư đến (hoặc Spam).");
     }

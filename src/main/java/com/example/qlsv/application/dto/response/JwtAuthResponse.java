@@ -1,19 +1,17 @@
 package com.example.qlsv.application.dto.response;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor // <--- Lombok sẽ tự tạo Constructor nhận tất cả tham số
 public class JwtAuthResponse {
     private String accessToken;
     private String tokenType = "Bearer";
     private Long userId;
     private String username;
-    private String role; // (ROLE_STUDENT, ROLE_LECTURER...)
-
-    public JwtAuthResponse(String accessToken, Long userId, String username, String role) {
-        this.accessToken = accessToken;
-        this.userId = userId;
-        this.username = username;
-        this.role = role;
-    }
+    private String email;
+    private String role;
 }

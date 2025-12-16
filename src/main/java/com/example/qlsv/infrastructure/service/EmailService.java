@@ -1,37 +1,49 @@
-package com.example.qlsv.infrastructure.service;
+package com.example.qlsv.infrastructure.service; // Hoặc package hiện tại của bạn
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    /**
-     * Gửi email cảnh báo cấm thi bất đồng bộ (Async)
-     * để không làm chậm luồng chính của hệ thống.
-     */
-    @Async
-    public void sendBanNotification(String toEmail, String studentName, String courseName) {
+    public void sendAttendanceWarning(String toEmail, String studentName, String courseCode, String time) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(toEmail);
-            message.setSubject("CẢNH BÁO HỌC VỤ: Thông báo Cấm thi môn " + courseName);
-            message.setText("Chào sinh viên " + studentName + ",\n\n" +
-                    "Hệ thống ghi nhận bạn đã vắng quá 30% số buổi học của môn: " + courseName + ".\n" +
-                    "Theo quy chế, bạn đã bị loại khỏi học phần này và cần đăng ký học lại vào học kỳ sau.\n\n" +
-                    "Trân trọng,\n" +
-                    "Phòng Đào tạo.");
-
+            message.setSubject("CẢNH BÁO VẮNG MẶT: " + courseCode);
+            message.setText("Xin chào " + studentName + ",\n\n" +
+                    "Bạn vừa bị ghi nhận VẮNG MẶT trong lớp học phần " + courseCode + " vào lúc " + time + ".\n" +
+                    "Nếu có sai sót, vui lòng liên hệ giảng viên ngay lập tức.\n\n" +
+                    "Trân trọng,\nPhòng Đào Tạo");
             mailSender.send(message);
-            System.out.println("--- EMAIL SERVICE: Đã gửi cảnh báo tới: " + toEmail + " ---");
+            log.info("Sent attendance warning email to {}", toEmail);
         } catch (Exception e) {
-            System.err.println("--- EMAIL SERVICE LỖI: Không thể gửi mail tới " + toEmail + ": " + e.getMessage());
+            log.error("Failed to send email: {}", e.getMessage());
+        }
+    }
+
+    // [FIX 5] Thêm tham số double absentPercent
+    public void sendBanWarning(String toEmail, String studentName, String courseCode, double absentPercent) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(toEmail);
+            message.setSubject("CẢNH BÁO CẤM THI: " + courseCode);
+            message.setText("Xin chào " + studentName + ",\n\n" +
+                    "Cảnh báo: Bạn đã vắng mặt " + absentPercent + "% số buổi học của môn " + courseCode + ".\n" +
+                    "Theo quy chế, bạn có nguy cơ bị CẤM THI nếu tỷ lệ này vượt quá 30%.\n" +
+                    "Vui lòng đi học đầy đủ các buổi còn lại.\n\n" +
+                    "Trân trọng,\nPhòng Đào Tạo");
+            mailSender.send(message);
+            log.info("Sent ban warning email to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send ban email: {}", e.getMessage());
         }
     }
 }

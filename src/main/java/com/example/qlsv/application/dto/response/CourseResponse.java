@@ -1,5 +1,4 @@
 package com.example.qlsv.application.dto.response;
-
 import com.example.qlsv.application.dto.SemesterDTO;
 import com.example.qlsv.application.dto.SubjectDTO;
 import lombok.Data;

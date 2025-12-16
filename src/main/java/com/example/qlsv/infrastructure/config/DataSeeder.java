@@ -17,29 +17,47 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // Tạo Admin (Admin không cần bảng phụ, chỉ cần User)
-        if (userRepository.findByUsername("admin").isEmpty()) {
-            User admin = new User(
-                    "admin",
-                    passwordEncoder.encode("123456"),
-                    "admin@test.com",
-                    Role.ROLE_ADMIN
-            );
+        if (userRepository.count() == 0) {
+            // Tạo Admin
+            User admin = User.builder()
+                    .username("admin")
+                    .password(passwordEncoder.encode("123456"))
+                    .email("admin@test.com")
+                    .role(Role.ROLE_ADMIN)
+                    .firstName("Super")
+                    .lastName("Admin")
+                    .enabled(true)
+                    .build();
             userRepository.save(admin);
-            System.out.println("--- SEEDER: Đã tạo Admin (admin/123456) ---");
-        }
-        else if (userRepository.findByUsername("secretary").isEmpty()) {
-            User secretary = new User(
-                    "secretary",
-                    passwordEncoder.encode("123456"),
-                    "secretary@test.com",
-                    Role.ROLE_SECRETARY
-            );
-            userRepository.save(secretary);
-            System.out.println("--- SEEDER: Đã tạo Thư ký (secretary/123456) ---");
-        }
 
-        // (Bạn có thể thêm code seed Student/Lecturer ở đây nếu muốn,
-        // nhưng dùng API createUser sẽ an toàn hơn vì nó xử lý cả 2 bảng)
+            // Tạo Giảng viên
+            User lecturer = User.builder()
+                    .username("gv.hung")
+                    .password(passwordEncoder.encode("123456"))
+                    .email("hung@test.com")
+                    .role(Role.ROLE_LECTURER)
+                    .firstName("Hung")
+                    .lastName("Tran")
+                    .lecturerCode("GV001")
+                    .department("CNTT")
+                    .enabled(true)
+                    .build();
+            userRepository.save(lecturer);
+
+            // Tạo Sinh viên
+            User student = User.builder()
+                    .username("sv.nam")
+                    .password(passwordEncoder.encode("123456"))
+                    .email("nam@test.com")
+                    .role(Role.ROLE_STUDENT)
+                    .firstName("Nam")
+                    .lastName("Nguyen")
+                    .studentCode("SV001")
+                    .enabled(true)
+                    .build();
+            userRepository.save(student);
+
+            System.out.println("--- ĐÃ KHỞI TẠO DỮ LIỆU MẪU THÀNH CÔNG ---");
+        }
     }
 }

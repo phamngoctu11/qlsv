@@ -1,19 +1,24 @@
 package com.example.qlsv.application.dto.response;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class StudentAttendanceStat {
-    private Long studentId;
-    private String studentName;
     private String studentCode;
+    private String studentName;
 
-    private int totalSessions;      // Tổng số buổi dự kiến của cả kỳ
-    private int attendedSessions;   // Số buổi đã đi học
-    private int absentSessions;     // Số buổi vắng (tính đến hiện tại)
+    // --- SỬA TỪ int SANG long ĐỂ KHỚP VỚI HÀM count() ---
+    private long totalSessions;
+    private long attendedSessions;
+    private long absentSessions;
+    // ----------------------------------------------------
 
-    private double absentPercentage; // Tỷ lệ vắng (%)
-    private boolean isBanned;        // true nếu vắng > 30% - CẤM THI
+    private double absentPercentage;
+    private boolean isBanned;
 }

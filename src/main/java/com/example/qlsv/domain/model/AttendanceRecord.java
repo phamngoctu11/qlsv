@@ -2,40 +2,32 @@ package com.example.qlsv.domain.model;
 
 import com.example.qlsv.domain.model.enums.AttendanceStatus;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
 import java.time.LocalDateTime;
 
-@Data
-@NoArgsConstructor
 @Entity
 @Table(name = "attendance_records")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class AttendanceRecord {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "session_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "session_id")
     private AttendanceSession session;
 
-    // --- THAY ĐỔI ---
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "student_code", nullable = false)
-    private Student student;
-    // ----------------
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private AttendanceStatus status;
+    // --- THAY ĐỔI: Trỏ tới User ---
+    @ManyToOne
+    @JoinColumn(name = "student_user_id")
+    private User student;
 
     private LocalDateTime checkInTime;
 
-    public AttendanceRecord(AttendanceSession session, Student student, AttendanceStatus status) {
-        this.session = session;
-        this.student = student;
-        this.status = status;
-        this.checkInTime = LocalDateTime.now();
-    }
+    @Enumerated(EnumType.STRING)
+    private AttendanceStatus status;
 }

@@ -5,25 +5,22 @@ import com.example.qlsv.application.dto.response.CourseResponse;
 import com.example.qlsv.application.dto.response.SimpleStudentResponse;
 import com.example.qlsv.application.dto.response.StudentAttendanceStat;
 
+import java.io.ByteArrayInputStream;
 import java.util.List;
 
 public interface CourseService {
-
-    // --- CRUD ---
     CourseResponse createCourse(CreateCourseRequest request);
-    CourseResponse getCourseById(Long id);
+    void registerStudentToCourse(String studentCode, Long courseId);
     List<CourseResponse> getAllCourses();
+    CourseResponse getCourseById(Long id);
     void deleteCourse(Long id);
 
-    // --- NGHIỆP VỤ ---
+    List<CourseResponse> getCoursesByLecturer(Long userId);
 
-    // [ĐÃ SỬA]: Tham số đầu tiên đổi từ Long studentId -> String studentCode
-    void registerStudent(String studentCode, Long courseId);
-
+    // [FIX 6] Tên hàm chuẩn
     List<SimpleStudentResponse> getStudentsByCourse(Long courseId);
-    List<CourseResponse> getCoursesByLecturer(Long lecturerId);
 
-    // --- THỐNG KÊ ---
     List<StudentAttendanceStat> getCourseStatistics(Long courseId);
     void sendBanNotifications(Long courseId);
+    ByteArrayInputStream exportCourseStatsToExcel(Long courseId);
 }

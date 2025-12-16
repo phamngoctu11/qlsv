@@ -1,37 +1,37 @@
 package com.example.qlsv.domain.repository;
 
 import com.example.qlsv.domain.model.Course;
-import com.example.qlsv.domain.model.Student;
+import com.example.qlsv.domain.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Long> {
 
-    // 1. Các hàm cơ bản
-    Optional<Course> findByCourseCode(String courseCode);
-    boolean existsBySubjectId(Long subjectId);
-    boolean existsBySemesterId(Long semesterId);
+    // Tìm lớp theo ID của User (Giảng viên)
+    List<Course> findByLecturerId(Long lecturerUserId);
 
-    // 2. Các hàm hỗ trợ cấu trúc mới (String Code)
-    boolean existsByLecturerLecturerCode(String lecturerCode);
-    List<Course> findByLecturerLecturerCode(String lecturerCode);
-    Optional<Course> findByIdAndLecturerLecturerCode(Long id, String lecturerCode);
+    // Validate trùng lịch dạy (Lecturer là User)
+    @Query("SELECT c FROM Course c WHERE c.lecturer.id = :lecturerUserId " +
+            "AND c.semester.id = :semesterId " +
+            "AND c.dayOfWeek = :dayOfWeek " +
+            "AND ((:startTime BETWEEN c.startTime AND c.endTime) OR (:endTime BETWEEN c.startTime AND c.endTime))")
+    List<Course> findConflictingCoursesForLecturer(Long lecturerUserId, Long semesterId, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime);
 
-    // 3. Hàm lấy danh sách sinh viên
-    @Query("SELECT cr.student FROM CourseRegistration cr WHERE cr.course.id = :courseId")
-    List<Student> findStudentsByCourseId(Long courseId);
+    // Validate trùng lịch học (Student là User)
+    @Query("SELECT c FROM Course c JOIN c.students s WHERE s.id = :studentUserId " +
+            "AND c.semester.id = :semesterId " +
+            "AND c.dayOfWeek = :dayOfWeek " +
+            "AND ((:startTime BETWEEN c.startTime AND c.endTime) OR (:endTime BETWEEN c.startTime AND c.endTime))")
+    List<Course> findConflictingCoursesForStudent(Long studentUserId, Long semesterId, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime);
 
-    // 4. Validate Lịch học SINH VIÊN
-    @Query("SELECT cr.course FROM CourseRegistration cr " +
-            "WHERE cr.student.studentCode = :studentCode " +
-            "AND cr.course.semester.id = :semesterId")
-    List<Course> findCoursesByStudentCodeAndSemesterId(String studentCode, Long semesterId);
-
-    // 5. [MỚI] Validate Lịch dạy GIẢNG VIÊN (Lấy các lớp GV dạy trong học kỳ này)
-    List<Course> findByLecturerLecturerCodeAndSemesterId(String lecturerCode, Long semesterId);
+    // Lấy danh sách SV (User) trong lớp
+    @Query("SELECT s FROM Course c JOIN c.students s WHERE c.id = :courseId")
+    List<User> findStudentsByCourseId(@Param("courseId") Long courseId);
 }

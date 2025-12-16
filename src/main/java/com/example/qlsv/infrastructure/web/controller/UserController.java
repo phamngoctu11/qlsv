@@ -4,6 +4,7 @@ import com.example.qlsv.application.dto.request.CreateUserRequest;
 import com.example.qlsv.application.dto.request.UpdateUserRequest;
 import com.example.qlsv.application.dto.response.UserResponse;
 import com.example.qlsv.application.service.UserService;
+import com.example.qlsv.infrastructure.security.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -11,20 +12,30 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-// MẶC ĐỊNH: Cho phép cả Admin và Thư ký truy cập (để Xem danh sách)
-@PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY')")
+// [ĐÃ BỎ] @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY')") ở class level
+// Để endpoint /me có thể được truy cập bởi mọi User đã đăng nhập
 public class UserController {
 
     private final UserService userService;
 
     /**
-     * [CẬP NHẬT] Chỉ ADMIN mới được phép TẠO người dùng mới.
-     * Thư ký bị chặn ở đây.
+     * 1. Xem thông tin bản thân: Mọi User đã đăng nhập đều dùng được
+     */
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal CustomUserDetails currentUser) {
+        Long userId = currentUser.getUser().getId();
+        return ResponseEntity.ok(userService.getUserById(userId));
+    }
+
+    /**
+     * 2. Tạo User mới: Chỉ ADMIN
      */
     @PostMapping("/create")
     @PreAuthorize("hasRole('ADMIN')")
@@ -34,35 +45,37 @@ public class UserController {
     }
 
     /**
-     * Xem chi tiết: Cả Admin và Thư ký đều được (kế thừa từ class)
+     * 3. Xem chi tiết người khác: Chỉ ADMIN hoặc SECRETARY
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY')")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
         UserResponse user = userService.getUserById(id);
         return ResponseEntity.ok(user);
     }
 
     /**
-     * Xem danh sách: Cả Admin và Thư ký đều được (kế thừa từ class)
+     * 4. Xem danh sách User: Chỉ ADMIN hoặc SECRETARY
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY')")
     public ResponseEntity<Page<UserResponse>> getAllUsers(Pageable pageable) {
         Page<UserResponse> users = userService.getAllUsers(pageable);
         return ResponseEntity.ok(users);
     }
 
     /**
-     * Cập nhật: Tạm thời để cả Admin và Thư ký (để sửa lỗi chính tả tên SV chẳng hạn).
-     * Nếu bạn muốn chặn Thư ký sửa, hãy thêm @PreAuthorize("hasRole('ADMIN')") vào đây.
+     * 5. Cập nhật User: Chỉ ADMIN hoặc SECRETARY
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY')")
     public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
         UserResponse updatedUser = userService.updateUser(id, request);
         return ResponseEntity.ok(updatedUser);
     }
 
     /**
-     * Xóa: Chỉ ADMIN mới được phép.
+     * 6. Xóa User: Chỉ ADMIN
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")

@@ -12,7 +12,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.ByteArrayInputStream;
 import java.util.List;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 
 @RestController
 @RequestMapping("/api/v1/courses")
@@ -51,7 +56,7 @@ public class CourseController {
     // Thư ký và Admin được ghi danh
     @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY')")
     public ResponseEntity<Void> registerStudentToCourse(@Valid @RequestBody RegisterStudentRequest request) {
-        courseService.registerStudent(request.getStudentCode(), request.getCourseId());
+        courseService.registerStudentToCourse(request.getStudentCode(), request.getCourseId());
         return ResponseEntity.ok().build();
     }
 
@@ -79,5 +84,19 @@ public class CourseController {
     public ResponseEntity<String> sendBanNotifications(@PathVariable Long id) {
         courseService.sendBanNotifications(id);
         return ResponseEntity.ok("Đã gửi lệnh gửi email.");
+    }
+    @GetMapping("/{id}/export-excel")
+    //@PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'SECRETARY')")
+    public ResponseEntity<InputStreamResource> exportExcel(@PathVariable Long id) {
+        ByteArrayInputStream in = courseService.exportCourseStatsToExcel(id);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "attachment; filename=thong_ke_lop_" + id + ".xlsx");
+
+        return ResponseEntity
+                .ok()
+                .headers(headers)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new InputStreamResource(in));
     }
 }

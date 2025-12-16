@@ -4,5 +4,5 @@ public enum AttendanceStatus {
     PRESENT, // Có mặt
     ABSENT,  // Vắng
     LATE,    // Đi trễ
-    EXCUSED  // Vắng có phép
+    EXCUSED // Vắng có phép
 }
