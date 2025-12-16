@@ -32,4 +32,5 @@ public interface UserService {
      * Xóa một người dùng.
      */
     void deleteUser(Long id);
+    void resetPassword(String username);
 }

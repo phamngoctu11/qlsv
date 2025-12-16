@@ -9,6 +9,7 @@ import com.example.qlsv.domain.exception.ResourceNotFoundException;
 import com.example.qlsv.domain.model.User;
 import com.example.qlsv.domain.model.enums.Role;
 import com.example.qlsv.domain.repository.UserRepository;
+import com.example.qlsv.infrastructure.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +24,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final com.example.qlsv.application.mapper.UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     @Override
     @Transactional
@@ -134,5 +136,12 @@ public class UserServiceImpl implements UserService {
     public Page<UserResponse> getAllUsers(Pageable pageable) {
         return userRepository.findAll(pageable)
                 .map(userMapper::toResponse);
+    }
+    public void resetPassword(String username){
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username",username ));
+        user.setPassword(passwordEncoder.encode("123456"));
+        emailService.forgetPassword(user.getEmail(),user.getUsername());
+        userRepository.save(user);
     }
 }

@@ -5,6 +5,7 @@ import com.example.qlsv.application.dto.request.UpdateUserRequest;
 import com.example.qlsv.application.dto.response.UserResponse;
 import com.example.qlsv.application.service.UserService;
 import com.example.qlsv.infrastructure.security.CustomUserDetails;
+import com.example.qlsv.infrastructure.service.EmailService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final EmailService emailService;
 
     /**
      * 1. Xem thông tin bản thân: Mọi User đã đăng nhập đều dùng được
@@ -62,6 +64,12 @@ public class UserController {
     public ResponseEntity<Page<UserResponse>> getAllUsers(Pageable pageable) {
         Page<UserResponse> users = userService.getAllUsers(pageable);
         return ResponseEntity.ok(users);
+    }
+    @PostMapping("/resetpassword")
+    public ResponseEntity<String> resetpassword(@RequestBody String username){
+        userService.resetPassword(username);
+        return ResponseEntity.ok("Password mới của bạn là 123456.");
+
     }
 
     /**

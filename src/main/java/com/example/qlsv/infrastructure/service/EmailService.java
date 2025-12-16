@@ -28,6 +28,20 @@ public class EmailService {
             log.error("Failed to send email: {}", e.getMessage());
         }
     }
+    public void forgetPassword(String toEmail, String username) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(toEmail);
+            message.setSubject("Quên mật khẩu: " + username);
+            message.setText("Xin chào " + username + ",\n\n" +
+                    "Bạn vừa gửi yêu cầu reset khi quên mật khẩu,mật khẩu mới của bạn sẽ là 123456\n \n" +
+                    "Trân trọng!!");
+            mailSender.send(message);
+            log.info("Sent attendance warning email to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send email: {}", e.getMessage());
+        }
+    }
 
     // [FIX 5] Thêm tham số double absentPercent
     public void sendBanWarning(String toEmail, String studentName, String courseCode, double absentPercent) {
