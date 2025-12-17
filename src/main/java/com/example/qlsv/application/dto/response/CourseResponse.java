@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.time.DayOfWeek; // <-- MỚI
 import java.time.LocalTime; // <-- MỚI
+import java.util.Set;
 
 @Data
 public class CourseResponse {
@@ -14,7 +15,7 @@ public class CourseResponse {
 
     private SubjectDTO subject;
     private SemesterDTO semester;
-    private SimpleLecturerResponse lecturer;
+    private Set<SimpleLecturerResponse> lecturers;
 
     // --- [MỚI] HIỂN THỊ LỊCH HỌC ---
     private DayOfWeek dayOfWeek;

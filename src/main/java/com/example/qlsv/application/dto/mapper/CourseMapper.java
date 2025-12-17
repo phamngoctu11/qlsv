@@ -15,6 +15,6 @@ public interface CourseMapper {
     @Mapping(source = "semester", target = "semester") // Giữ nguyên
 
     // SỬA: Map trường "lecturer" (User) bằng hàm "userToSimpleLecturerResponse" bên UserMapper
-    @Mapping(source = "lecturer", target = "lecturer")
+    @Mapping(source = "lecturers", target = "lecturers")
     CourseResponse toResponse(Course course);
 }

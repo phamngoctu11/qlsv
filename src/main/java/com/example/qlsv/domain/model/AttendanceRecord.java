@@ -7,11 +7,14 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "attendance_records")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Table(name = "attendance_records", indexes = {
+        // Tạo index kép để tìm nhanh cặp (Session + Student)
+        @Index(name = "idx_att_record_session_student", columnList = "session_id, student_user_id")
+})
 public class AttendanceRecord {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

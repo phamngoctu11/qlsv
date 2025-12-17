@@ -25,7 +25,9 @@ import java.io.ByteArrayOutputStream;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,8 +46,7 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional
     public CourseResponse createCourse(CreateCourseRequest request) {
-        if (courseRepository.findAll().stream()
-                .anyMatch(c -> c.getCourseCode().equals(request.getCourseCode()))) {
+        if (courseRepository.existsByCourseCode(request.getCourseCode())) {
             throw new BusinessException("Mã lớp học phần đã tồn tại: " + request.getCourseCode());
         }
 
@@ -55,41 +56,58 @@ public class CourseServiceImpl implements CourseService {
         Semester semester = semesterRepository.findById(request.getSemesterId())
                 .orElseThrow(() -> new ResourceNotFoundException("Semester", "id", request.getSemesterId()));
 
-        User lecturer = userRepository.findByLecturerCode(request.getLecturerCode())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giảng viên có mã: " + request.getLecturerCode()));
+        // --- XỬ LÝ NHIỀU GIẢNG VIÊN (MANY-TO-MANY) ---
 
-        if (lecturer.getRole() != Role.ROLE_LECTURER) {
-            throw new BusinessException("User này không phải là giảng viên");
-        }
-
-        // Parse DayOfWeek
+        // Parse ngày giờ trước để dùng check trùng lịch
         DayOfWeek dow;
         try {
             dow = DayOfWeek.valueOf(request.getDayOfWeek().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new BusinessException("Ngày trong tuần không hợp lệ");
         }
-
-        // Parse Time
         LocalTime start = LocalTime.parse(request.getStartTime());
         LocalTime end = LocalTime.parse(request.getEndTime());
 
-        List<Course> conflicting = courseRepository.findConflictingCoursesForLecturer(
-                lecturer.getId(),
-                semester.getId(),
-                dow,
-                start,
-                end
-        );
-        if (!conflicting.isEmpty()) {
-            throw new BusinessException("Giảng viên bị trùng lịch dạy với lớp: " + conflicting.get(0).getCourseCode());
+        Set<User> lecturers = new HashSet<>();
+
+        // Duyệt qua từng mã giảng viên trong request
+        if (request.getLecturerCodes() == null || request.getLecturerCodes().isEmpty()) {
+            throw new BusinessException("Lớp học phần phải có ít nhất một giảng viên");
+        }
+
+        for (String code : request.getLecturerCodes()) {
+            // Tìm giảng viên
+            User lecturer = userRepository.findByLecturerCode(code)
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giảng viên có mã: " + code));
+
+            // Validate Role
+            if (lecturer.getRole() != Role.ROLE_LECTURER) {
+                throw new BusinessException("Mã " + code + " không phải là tài khoản giảng viên");
+            }
+
+            // Check trùng lịch cho TỪNG giảng viên
+            List<Course> conflicting = courseRepository.findConflictingCoursesForLecturer(
+                    lecturer.getId(),
+                    semester.getId(),
+                    dow,
+                    start,
+                    end
+            );
+
+            if (!conflicting.isEmpty()) {
+                throw new BusinessException("Giảng viên " + lecturer.getFirstName() +
+                        " (" + code + ") bị trùng lịch dạy với lớp: " +
+                        conflicting.get(0).getCourseCode());
+            }
+
+            lecturers.add(lecturer);
         }
 
         Course course = Course.builder()
                 .courseCode(request.getCourseCode())
                 .subject(subject)
                 .semester(semester)
-                .lecturer(lecturer)
+                .lecturers(lecturers)
                 .dayOfWeek(dow)
                 .startTime(start)
                 .endTime(end)
@@ -131,11 +149,10 @@ public class CourseServiceImpl implements CourseService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
-        return courseRepository.findByLecturerId(user.getId()).stream()
+        return courseRepository.findByLecturers_Id(user.getId()).stream()
                 .map(courseMapper::toResponse)
                 .collect(Collectors.toList());
     }
-
     @Override
     public List<SimpleStudentResponse> getStudentsByCourse(Long courseId) {
         if (!courseRepository.existsById(courseId)) {

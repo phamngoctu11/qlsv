@@ -15,15 +15,29 @@ import java.util.List;
 public interface CourseRepository extends JpaRepository<Course, Long> {
 
     // Tìm lớp theo ID của User (Giảng viên)
-    List<Course> findByLecturerId(Long lecturerUserId);
+    List<Course> findByLecturers_Id(Long lecturerUserId);
+    boolean existsByCourseCode(String courseCode);
 
     // Validate trùng lịch dạy (Lecturer là User)
-    @Query("SELECT c FROM Course c WHERE c.lecturer.id = :lecturerUserId " +
+    @Query("SELECT c FROM Course c " +
+            "JOIN c.lecturers l " +  // <--- THAY ĐỔI QUAN TRỌNG: Join vào danh sách
+            "WHERE l.id = :lecturerUserId " + // <--- So sánh ID của giảng viên trong danh sách đó
             "AND c.semester.id = :semesterId " +
             "AND c.dayOfWeek = :dayOfWeek " +
-            "AND ((:startTime BETWEEN c.startTime AND c.endTime) OR (:endTime BETWEEN c.startTime AND c.endTime))")
-    List<Course> findConflictingCoursesForLecturer(Long lecturerUserId, Long semesterId, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime);
-
+            "AND (" +
+            "   (:startTime >= c.startTime AND :startTime < c.endTime) " +
+            "   OR " +
+            "   (:endTime > c.startTime AND :endTime <= c.endTime) " +
+            "   OR " +
+            "   (c.startTime >= :startTime AND c.endTime <= :endTime)" + // Bao trùm
+            ")")
+    List<Course> findConflictingCoursesForLecturer(
+            @Param("lecturerUserId") Long lecturerUserId,
+            @Param("semesterId") Long semesterId,
+            @Param("dayOfWeek") DayOfWeek dayOfWeek,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime
+    );
     // Validate trùng lịch học (Student là User)
     @Query("SELECT c FROM Course c JOIN c.students s WHERE s.id = :studentUserId " +
             "AND c.semester.id = :semesterId " +

@@ -45,7 +45,10 @@ public class AttendanceServiceImpl implements AttendanceService {
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
 
-        if (!course.getLecturer().getId().equals(lecturer.getId())) {
+        boolean isAssigned = course.getLecturers().stream()
+                .anyMatch(l -> l.getId().equals(lecturer.getId()));
+
+        if (!isAssigned) {
             throw new BusinessException("Giảng viên không phụ trách lớp học này.");
         }
 

@@ -9,7 +9,10 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "courses")
+@Table(name = "courses", indexes = {
+        @Index(name = "idx_course_semester", columnList = "semester_id"),
+        @Index(name = "idx_course_code", columnList = "courseCode") // Tìm theo mã lớp học phần
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -31,9 +34,14 @@ public class Course {
     private Semester semester;
 
     // --- THAY ĐỔI: Trỏ tới User (Role phải là LECTURER) ---
-    @ManyToOne
-    @JoinColumn(name = "lecturer_user_id") // Đổi tên cột cho rõ nghĩa
-    private User lecturer;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "course_lecturers", // Tên bảng trung gian mới sẽ được tạo
+            joinColumns = @JoinColumn(name = "course_id"),
+            inverseJoinColumns = @JoinColumn(name = "lecturer_user_id")
+    )
+    @Builder.Default
+    private Set<User> lecturers = new HashSet<>();
 
     // --- THAY ĐỔI: Danh sách User (Role phải là STUDENT) ---
     @ManyToMany(fetch = FetchType.LAZY)

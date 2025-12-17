@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.util.Set;
+
 @Data
 public class CreateCourseRequest {
     @NotBlank
@@ -11,9 +13,8 @@ public class CreateCourseRequest {
 
     @NotNull
     private Long subjectId;
-
-    @NotBlank // Input bây giờ là String Code
-    private String lecturerCode;
+    @NotBlank
+    private Set<String> lecturerCodes;
 
     @NotNull
     private Long semesterId;

@@ -19,16 +19,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-// [ĐÃ BỎ] @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY')") ở class level
-// Để endpoint /me có thể được truy cập bởi mọi User đã đăng nhập
 public class UserController {
-
     private final UserService userService;
-    private final EmailService emailService;
-
-    /**
-     * 1. Xem thông tin bản thân: Mọi User đã đăng nhập đều dùng được
-     */
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal CustomUserDetails currentUser) {

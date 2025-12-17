@@ -73,6 +73,7 @@ public class CourseController {
         return ResponseEntity.ok(courseService.getCoursesByLecturer(lecturerId));
     }
 
+
     @GetMapping("/{id}/statistics")
     @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY', 'LECTURER')")
     public ResponseEntity<List<StudentAttendanceStat>> getCourseStats(@PathVariable Long id) {
