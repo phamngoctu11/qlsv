@@ -13,7 +13,6 @@ public class CreateCourseRequest {
 
     @NotNull
     private Long subjectId;
-    @NotBlank
     private Set<String> lecturerCodes;
 
     @NotNull

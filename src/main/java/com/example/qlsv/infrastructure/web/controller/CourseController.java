@@ -1,20 +1,27 @@
 package com.example.qlsv.infrastructure.web.controller;
 
+import com.example.qlsv.application.dto.mapper.CourseMapper;
 import com.example.qlsv.application.dto.request.CreateCourseRequest;
 import com.example.qlsv.application.dto.request.RegisterStudentRequest;
 import com.example.qlsv.application.dto.response.CourseResponse;
 import com.example.qlsv.application.dto.response.SimpleStudentResponse;
 import com.example.qlsv.application.dto.response.StudentAttendanceStat;
 import com.example.qlsv.application.service.CourseService;
+import com.example.qlsv.domain.model.Course;
+import com.example.qlsv.domain.repository.CourseRepository;
+import com.example.qlsv.infrastructure.security.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.ByteArrayInputStream;
 import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -25,6 +32,8 @@ import org.springframework.http.MediaType;
 public class CourseController {
 
     private final CourseService courseService;
+    private final CourseRepository courseRepository;
+    private final CourseMapper courseMapper;
 
     @PostMapping
     // Thư ký và Admin được tạo lớp học phần
@@ -58,6 +67,16 @@ public class CourseController {
     public ResponseEntity<Void> registerStudentToCourse(@Valid @RequestBody RegisterStudentRequest request) {
         courseService.registerStudentToCourse(request.getStudentCode(), request.getCourseId());
         return ResponseEntity.ok().build();
+    }
+    @GetMapping("/my-courses")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<List<CourseResponse>> getMyCourses(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long studentId = userDetails.getUser().getId();
+        List<Course> courses = courseRepository.findByStudents_Id(studentId);
+        // Convert to DTO using Mapper
+        return ResponseEntity.ok(courses.stream()
+                .map(courseMapper::toResponse)
+                .collect(Collectors.toList()));
     }
 
     // Các API khác giữ nguyên, chỉ cần update @PreAuthorize nếu cần SECRETARY xem

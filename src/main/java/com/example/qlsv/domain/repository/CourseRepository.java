@@ -17,7 +17,8 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     // Tìm lớp theo ID của User (Giảng viên)
     List<Course> findByLecturers_Id(Long lecturerUserId);
     boolean existsByCourseCode(String courseCode);
-
+    // Tìm các lớp mà sinh viên (studentId) đang tham gia
+    List<Course> findByStudents_Id(Long studentId);
     // Validate trùng lịch dạy (Lecturer là User)
     @Query("SELECT c FROM Course c " +
             "JOIN c.lecturers l " +  // <--- THAY ĐỔI QUAN TRỌNG: Join vào danh sách
