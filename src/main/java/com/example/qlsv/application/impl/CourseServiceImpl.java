@@ -166,37 +166,55 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public List<StudentAttendanceStat> getCourseStatistics(Long courseId) {
+        // 1. Lấy thông tin môn học
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
 
-        long totalSessionsPassed = calculateTotalSessions(course.getSemester().getStartDate(), LocalDate.now(), course.getDayOfWeek());
+        // 2. Tính tổng số buổi lẽ ra phải học tính đến hiện tại
+        long totalSessionsPassed = calculateTotalSessions(
+                course.getSemester().getStartDate(),
+                LocalDate.now(),
+                course.getDayOfWeek()
+        );
 
+        // 3. Lấy danh sách sinh viên trong lớp
         List<User> students = courseRepository.findStudentsByCourseId(courseId);
-        List<AttendanceRecord> allRecords = recordRepository.findAll();
 
+        // 4. Lấy dữ liệu đi học từ DB (đã tối ưu) -> Map vào HashMap để tra cứu cho nhanh
+        // Key: StudentCode, Value: Số buổi đi học
+        List<Object[]> presentCounts = recordRepository.countPresentSessionsByCourse(courseId);
+        java.util.Map<String, Long> attendanceMap = presentCounts.stream()
+                .collect(Collectors.toMap(
+                        row -> (String) row[0], // Key: studentCode
+                        row -> (Long) row[1]    // Value: count
+                ));
+
+        // 5. Tính toán và trả về kết quả
         return students.stream().map(student -> {
-            long attended = allRecords.stream().filter(r ->
-                    r.getSession().getCourse().getId().equals(courseId) &&
-                            r.getStudent().getStudentCode().equals(student.getStudentCode()) &&
-                            (r.getStatus() == AttendanceStatus.PRESENT || r.getStatus() == AttendanceStatus.LATE || r.getStatus() == AttendanceStatus.EXCUSED)
-            ).count();
+            // Lấy số buổi đi học từ Map, nếu không có thì bằng 0
+            long attended = attendanceMap.getOrDefault(student.getStudentCode(), 0L);
 
             long absent = totalSessionsPassed - attended;
-            if (absent < 0) absent = 0;
+            if (absent < 0) absent = 0; // Đề phòng trường hợp dữ liệu test bị lệch ngày
+
             double percent = (totalSessionsPassed > 0) ? ((double) absent / totalSessionsPassed) * 100 : 0;
+
+            // Logic cảnh báo: Vắng > 20% là cấm thi (BANNED)
+            // Bạn có thể sửa số 20 tùy quy chế
+            boolean isBanned = percent > 20;
 
             return StudentAttendanceStat.builder()
                     .studentCode(student.getStudentCode())
+                    // Ghép chuỗi Họ + Tên đúng theo entity User của bạn
                     .studentName(student.getLastName() + " " + student.getFirstName())
                     .totalSessions(totalSessionsPassed)
                     .attendedSessions(attended)
                     .absentSessions(absent)
-                    .absentPercentage(Math.round(percent * 10.0) / 10.0)
-                    .isBanned(percent > 30)
+                    .absentPercentage(Math.round(percent * 10.0) / 10.0) // Làm tròn 1 chữ số thập phân
+                    .isBanned(isBanned)
                     .build();
         }).collect(Collectors.toList());
     }
-
     // SỬA HÀM NÀY ĐỂ TRÁNH XUNG ĐỘT TYPE
     private long calculateTotalSessions(LocalDate start, LocalDate end, DayOfWeek dayOfWeek) {
         long count = 0;

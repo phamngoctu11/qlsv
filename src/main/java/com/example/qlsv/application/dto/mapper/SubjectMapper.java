@@ -3,6 +3,7 @@ package com.example.qlsv.application.dto.mapper;
 import com.example.qlsv.application.dto.SubjectDTO;
 import com.example.qlsv.domain.model.Subject;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget; // Dùng để update
 
 @Mapper(componentModel = "spring")
@@ -19,5 +20,6 @@ public interface SubjectMapper {
      * @param dto Dữ liệu mới từ request
      * @param entity Đối tượng Subject đã được lấy từ DB
      */
+    @Mapping(target = "id", ignore = true)
     void updateEntityFromDto(SubjectDTO dto, @MappingTarget Subject entity);
 }

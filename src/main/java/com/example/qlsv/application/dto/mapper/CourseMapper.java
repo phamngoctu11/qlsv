@@ -13,7 +13,7 @@ public interface CourseMapper {
 
     @Mapping(source = "subject", target = "subject") // Giữ nguyên
     @Mapping(source = "semester", target = "semester") // Giữ nguyên
-
+    @Mapping(target = "id", ignore = true)
     // SỬA: Map trường "lecturer" (User) bằng hàm "userToSimpleLecturerResponse" bên UserMapper
     @Mapping(source = "lecturers", target = "lecturers")
     CourseResponse toResponse(Course course);
