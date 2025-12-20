@@ -3,6 +3,7 @@ package com.example.qlsv.application.impl;
 import com.example.qlsv.application.dto.mapper.CourseMapper;
 import com.example.qlsv.application.dto.mapper.UserMapper;
 import com.example.qlsv.application.dto.request.CreateCourseRequest;
+import com.example.qlsv.application.dto.response.CourseDashboardResponse;
 import com.example.qlsv.application.dto.response.CourseResponse;
 import com.example.qlsv.application.dto.response.SimpleStudentResponse;
 import com.example.qlsv.application.dto.response.StudentAttendanceStat;
@@ -165,8 +166,9 @@ public class CourseServiceImpl implements CourseService {
                 .collect(Collectors.toList());
     }
 
+    // Sửa kiểu trả về từ List<...> thành CourseDashboardResponse
     @Override
-    public List<StudentAttendanceStat> getCourseStatistics(Long courseId) {
+    public CourseDashboardResponse getCourseStatistics(Long courseId) {
         // 1. Lấy thông tin môn học
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
@@ -181,40 +183,44 @@ public class CourseServiceImpl implements CourseService {
         // 3. Lấy danh sách sinh viên trong lớp
         List<User> students = courseRepository.findStudentsByCourseId(courseId);
 
-        // 4. Lấy dữ liệu đi học từ DB (đã tối ưu) -> Map vào HashMap để tra cứu cho nhanh
-        // Key: StudentCode, Value: Số buổi đi học
+        // 4. Lấy dữ liệu đi học từ DB
         List<Object[]> presentCounts = recordRepository.countPresentSessionsByCourse(courseId);
         java.util.Map<String, Long> attendanceMap = presentCounts.stream()
                 .collect(Collectors.toMap(
-                        row -> (String) row[0], // Key: studentCode
-                        row -> (Long) row[1]    // Value: count
+                        row -> (String) row[0],
+                        row -> (Long) row[1]
                 ));
 
-        // 5. Tính toán và trả về kết quả
-        return students.stream().map(student -> {
-            // Lấy số buổi đi học từ Map, nếu không có thì bằng 0
+        // 5. Tính toán danh sách chi tiết (Lưu vào biến stats thay vì return ngay)
+        List<StudentAttendanceStat> stats = students.stream().map(student -> {
             long attended = attendanceMap.getOrDefault(student.getStudentCode(), 0L);
-
             long absent = totalSessionsPassed - attended;
-            if (absent < 0) absent = 0; // Đề phòng trường hợp dữ liệu test bị lệch ngày
+            if (absent < 0) absent = 0;
 
             double percent = (totalSessionsPassed > 0) ? ((double) absent / totalSessionsPassed) * 100 : 0;
-
-            // Logic cảnh báo: Vắng > 20% là cấm thi (BANNED)
-            // Bạn có thể sửa số 20 tùy quy chế
             boolean isBanned = percent > 20;
 
             return StudentAttendanceStat.builder()
                     .studentCode(student.getStudentCode())
-                    // Ghép chuỗi Họ + Tên đúng theo entity User của bạn
                     .studentName(student.getLastName() + " " + student.getFirstName())
                     .totalSessions(totalSessionsPassed)
                     .attendedSessions(attended)
                     .absentSessions(absent)
-                    .absentPercentage(Math.round(percent * 10.0) / 10.0) // Làm tròn 1 chữ số thập phân
+                    .absentPercentage(Math.round(percent * 10.0) / 10.0)
                     .isBanned(isBanned)
                     .build();
         }).collect(Collectors.toList());
+
+        // 6. --- THÊM MỚI: Tính tổng số lượng bị cấm thi ---
+        int bannedCount = (int) stats.stream()
+                .filter(StudentAttendanceStat::isBanned) // Lọc những người bị ban
+                .count(); // Đếm
+
+        // 7. Đóng gói vào DTO mới và trả về
+        return CourseDashboardResponse.builder()
+                .totalBanned(bannedCount)       // Số lượng bị cấm thi
+                .studentDetails(stats)          // Danh sách chi tiết
+                .build();
     }
     // SỬA HÀM NÀY ĐỂ TRÁNH XUNG ĐỘT TYPE
     private long calculateTotalSessions(LocalDate start, LocalDate end, DayOfWeek dayOfWeek) {
@@ -235,7 +241,12 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public void sendBanNotifications(Long courseId) {
-        List<StudentAttendanceStat> stats = getCourseStatistics(courseId);
+        // 1. Lấy dữ liệu tổng hợp (Wrapper Object)
+        CourseDashboardResponse dashboardData = getCourseStatistics(courseId);
+
+        // 2. Trích xuất danh sách sinh viên từ Object đó ra
+        List<StudentAttendanceStat> stats = dashboardData.getStudentDetails();
+
         Course course = courseRepository.findById(courseId).orElseThrow();
 
         for (StudentAttendanceStat stat : stats) {
@@ -255,7 +266,12 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public ByteArrayInputStream exportCourseStatsToExcel(Long courseId) {
-        List<StudentAttendanceStat> stats = getCourseStatistics(courseId);
+        // 1. Lấy dữ liệu tổng hợp
+        CourseDashboardResponse dashboardData = getCourseStatistics(courseId);
+
+        // 2. Trích xuất danh sách sinh viên để duyệt và ghi vào Excel
+        List<StudentAttendanceStat> stats = dashboardData.getStudentDetails();
+
         String[] columns = {"Mã SV", "Họ Tên", "Tổng buổi", "Đã học", "Vắng", "% Vắng", "Cấm thi"};
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -288,7 +304,6 @@ public class CourseServiceImpl implements CourseService {
             throw new BusinessException("Lỗi khi xuất file Excel: " + e.getMessage());
         }
     }
-
     @Override
     public List<CourseResponse> getAllCourses() {
         return courseRepository.findAll().stream().map(courseMapper::toResponse).collect(Collectors.toList());

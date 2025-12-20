@@ -3,9 +3,9 @@ package com.example.qlsv.infrastructure.web.controller;
 import com.example.qlsv.application.dto.mapper.CourseMapper;
 import com.example.qlsv.application.dto.request.CreateCourseRequest;
 import com.example.qlsv.application.dto.request.RegisterStudentRequest;
+import com.example.qlsv.application.dto.response.CourseDashboardResponse;
 import com.example.qlsv.application.dto.response.CourseResponse;
 import com.example.qlsv.application.dto.response.SimpleStudentResponse;
-import com.example.qlsv.application.dto.response.StudentAttendanceStat;
 import com.example.qlsv.application.service.CourseService;
 import com.example.qlsv.domain.model.Course;
 import com.example.qlsv.domain.repository.CourseRepository;
@@ -95,7 +95,7 @@ public class CourseController {
 
     @GetMapping("/{id}/statistics")
     @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY', 'LECTURER')")
-    public ResponseEntity<List<StudentAttendanceStat>> getCourseStats(@PathVariable Long id) {
+    public ResponseEntity<CourseDashboardResponse> getCourseStats(@PathVariable Long id) {
         return ResponseEntity.ok(courseService.getCourseStatistics(id));
     }
 

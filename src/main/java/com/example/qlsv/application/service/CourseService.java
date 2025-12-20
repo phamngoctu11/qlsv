@@ -1,6 +1,7 @@
 package com.example.qlsv.application.service;
 
 import com.example.qlsv.application.dto.request.CreateCourseRequest;
+import com.example.qlsv.application.dto.response.CourseDashboardResponse;
 import com.example.qlsv.application.dto.response.CourseResponse;
 import com.example.qlsv.application.dto.response.SimpleStudentResponse;
 import com.example.qlsv.application.dto.response.StudentAttendanceStat;
@@ -20,7 +21,7 @@ public interface CourseService {
     // [FIX 6] Tên hàm chuẩn
     List<SimpleStudentResponse> getStudentsByCourse(Long courseId);
 
-    List<StudentAttendanceStat> getCourseStatistics(Long courseId);
+    CourseDashboardResponse getCourseStatistics(Long courseId);
     void sendBanNotifications(Long courseId);
     ByteArrayInputStream exportCourseStatsToExcel(Long courseId);
 }
