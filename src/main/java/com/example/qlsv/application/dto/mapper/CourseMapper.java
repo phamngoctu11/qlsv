@@ -1,5 +1,4 @@
 package com.example.qlsv.application.dto.mapper;
-import com.example.qlsv.application.mapper.UserMapper;
 import com.example.qlsv.application.dto.mapper.SemesterMapper;
 import com.example.qlsv.application.dto.mapper.SubjectMapper;
 import com.example.qlsv.application.dto.response.CourseResponse;
@@ -13,7 +12,6 @@ public interface CourseMapper {
 
     @Mapping(source = "subject", target = "subject") // Giữ nguyên
     @Mapping(source = "semester", target = "semester") // Giữ nguyên
-    @Mapping(target = "id", ignore = true)
     // SỬA: Map trường "lecturer" (User) bằng hàm "userToSimpleLecturerResponse" bên UserMapper
     @Mapping(source = "lecturers", target = "lecturers")
     CourseResponse toResponse(Course course);
