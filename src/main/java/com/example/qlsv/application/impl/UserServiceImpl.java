@@ -1,5 +1,6 @@
 package com.example.qlsv.application.impl;
 
+import com.example.qlsv.application.dto.mapper.UserMapper;
 import com.example.qlsv.application.dto.request.CreateUserRequest;
 import com.example.qlsv.application.dto.request.UpdateUserRequest;
 import com.example.qlsv.application.dto.response.UserResponse;
@@ -22,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final com.example.qlsv.application.mapper.UserMapper userMapper;
+    private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
 

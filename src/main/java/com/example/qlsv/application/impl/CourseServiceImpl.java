@@ -1,6 +1,7 @@
 package com.example.qlsv.application.impl;
 
 import com.example.qlsv.application.dto.mapper.CourseMapper;
+import com.example.qlsv.application.dto.mapper.UserMapper;
 import com.example.qlsv.application.dto.request.CreateCourseRequest;
 import com.example.qlsv.application.dto.response.CourseResponse;
 import com.example.qlsv.application.dto.response.SimpleStudentResponse;
@@ -41,7 +42,7 @@ public class CourseServiceImpl implements CourseService {
     private final AttendanceRecordRepository recordRepository;
     private final EmailService emailService;
     private final CourseMapper courseMapper;
-    private final com.example.qlsv.application.mapper.UserMapper userMapper;
+    private final UserMapper userMapper;
 
     @Override
     @Transactional

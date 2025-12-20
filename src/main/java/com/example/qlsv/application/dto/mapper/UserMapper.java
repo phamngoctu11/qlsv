@@ -1,4 +1,4 @@
-package com.example.qlsv.application.mapper;
+package com.example.qlsv.application.dto.mapper;
 
 import com.example.qlsv.application.dto.response.SimpleStudentResponse;
 import com.example.qlsv.application.dto.response.SimpleLecturerResponse; // Import thêm nếu chưa có
